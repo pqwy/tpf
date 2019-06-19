@@ -1,0 +1,20 @@
+opam-version: "2.0"
+homepage:     "https://github.com/pqwy/tpf"
+dev-repo:     "git+https://github.com/pqwy/tpf.git"
+bug-reports:  "https://github.com/pqwy/tpf/issues"
+doc:          "http://pqwy.github.io/tpf/doc"
+author:       "David Kaloper <dk505@cam.ac.uk>"
+maintainer:   "David Kaloper <dk505@cam.ac.uk>"
+license:      "ISC"
+synopsis:     "Simple and idiomatic generic programming"
+description:
+"Tagless/Trivial polytypic functions (TPF) is a minimal library facilitating
+generic programming (in the sense of polytypism). TPF is simple, idiomatic,
+decently efficient and has no dependencies."
+
+build: [ [ "dune" "subst" ] {pinned}
+         [ "dune" "build" "-p" name "-j" jobs ] ]
+depends: [
+  "ocaml" {>= "4.05.0"}
+  "dune" {build & >= "1.8"}
+]

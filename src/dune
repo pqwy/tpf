@@ -1,0 +1,5 @@
+(library
+  (public_name tpf)
+  (synopsis "Simple, idiomatic generic programming")
+  (wrapped false)
+  (modules tpf))
