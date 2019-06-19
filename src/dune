@@ -3,3 +3,11 @@
   (synopsis "Simple, idiomatic generic programming")
   (wrapped false)
   (modules tpf))
+
+(library
+  (public_name tpf.std)
+  (name tpf_std)
+  (synopsis "Generic representations of common Stdlib types")
+  (wrapped false)
+  (modules tpf_std)
+  (libraries tpf))
