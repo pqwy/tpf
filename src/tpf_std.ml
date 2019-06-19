@@ -47,19 +47,19 @@ let result: _ g2 = { view; schema }
 
 (* Equality *)
 
-type _ typ = ..
+type _ ttag = ..
 
 type 'a eq = 'a -> 'a -> bool
-type 'a jmeq = { eq: 'b. 'a -> 'b typ -> 'b -> bool }
+type 'a jmeq = { eq: 'b. 'a -> 'b ttag -> 'b -> bool }
 
 let jmeq (type a) (eq: a -> a -> bool) =
-  let module M = struct type _ typ += K : a typ end in
-  let eq (type b) a (t: b typ) (b: b) =
+  let module M = struct type _ ttag += K : a ttag end in
+  let eq (type b) a (t: b ttag) (b: b) =
     match t with M.K -> eq a b | _ -> false in
-  ({ eq }, M.K)
+  { eq }, M.K
 
 module Eq1 = Generic (struct type 'a r = 'a jmeq end)
-module Eq2 = Generic (struct type 'a r = 'a typ end)
+module Eq2 = Generic (struct type 'a r = 'a ttag end)
 
 let geq v1 v2 a b =
   let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> bool =
@@ -100,21 +100,21 @@ let eq9 (g: _ g9) eq1 eq2 eq3 eq4 eq5 eq6 eq7 eq8 eq9 =
 (* Comparison *)
 
 type 'a cmp = 'a -> 'a -> int
-type 'a jmcmp = { cmp: 'b. 'a -> 'b typ -> 'b -> int }
+type 'a jmcmp = { cmp: 'b. 'a -> 'b ttag -> 'b -> int }
 
 let lift (type a) (compare: a -> a -> int) =
-  let module M = struct type _ typ += K : a typ end in
-  let cmp (type b): _ -> b typ -> b -> _ =
+  let module M = struct type _ ttag += K : a ttag end in
+  let cmp (type b): _ -> b ttag -> b -> _ =
     fun a r b -> match r with M.K -> compare a b | _ -> 0 in
-  ({ cmp }, M.K)
+  { cmp }, M.K
 
 module Cmp1 = Generic (struct type 'a r = 'a jmcmp end)
-module Cmp2 = Generic (struct type 'a r = 'a typ end)
+module Cmp2 = Generic (struct type 'a r = 'a ttag end)
 
 let gcompare v1 v2 a b =
   let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> int =
   V.( fun s1 s2 -> match s1, s2 with
-      K (_, m1)   , K (_, m2)    -> m1.index - m2.index
+    | K (_, m1)   , K (_, m2)    -> m1.index - m2.index
     | A (s1, a, f), A (s2, b, r) ->
       ( match go s1 s2 with 0 -> Cmp1.(!!f).cmp a Cmp2.(!!r) b | c -> c )
     | R (s1, x1)  , R (s2, x2)   ->

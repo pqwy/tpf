@@ -8,6 +8,7 @@ val option : ('a, 'a option) g1
 val result : ('a, 'b, ('a, 'b) result) g2
 
 type 'a eq = 'a -> 'a -> bool
+
 val eq0 : ('x) g0 -> 'x eq
 val eq1 : ('a, 'x) g1 -> 'a eq -> 'x eq
 val eq2 : ('a, 'b, 'x) g2 -> 'a eq -> 'b eq -> 'x eq
@@ -20,6 +21,7 @@ val eq8 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) g8 -> 'a eq -> 'b eq -> 'c eq -> 
 val eq9 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 -> 'a eq -> 'b eq -> 'c eq -> 'd eq -> 'e eq -> 'f eq -> 'g eq -> 'h eq -> 'i eq -> 'x eq
 
 type 'a cmp = 'a -> 'a -> int
+
 val cmp0 : ('x) g0 -> 'x cmp
 val cmp1 : ('a, 'x) g1 -> 'a cmp -> 'x cmp
 val cmp2 : ('a, 'b, 'x) g2 -> 'a cmp -> 'b cmp -> 'x cmp

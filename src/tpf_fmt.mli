@@ -21,7 +21,7 @@ val g_pp9: ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 -> 'a Fmt.t ->
            'g Fmt.t -> 'h Fmt.t -> 'i Fmt.t -> 'x Fmt.t
 
 (* Or *)
-include Pi with type 'a r := 'a Fmt.t
+include Gfun with type 'a r := 'a Fmt.t
 
 (* To construct functions > 9. But there is no g10. Drop? *)
 type p

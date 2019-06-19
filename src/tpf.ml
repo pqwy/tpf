@@ -1,6 +1,8 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
+(* Core types. *)
+
 type (+'a, +'f) app
 
 type meta = { name : string; index : int; fields : string list }
@@ -8,26 +10,30 @@ type meta = { name : string; index : int; fields : string list }
 module V = struct
   type (+_, _, +_) spine =
   | K : 'a * meta -> ('a, 'x, 'res) spine
-  | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine * 'x -> ('b, 'x, 'res) spine
+  | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 module S = struct
   type (+_, _, +_) spine =
   | K : 'a * meta -> ('a, 'x, 'res) spine
-  | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine -> ('b, 'x, 'res) spine
+  | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
 type ('a, +'res) view = 'a -> ('a, 'a, 'res) V.spine
 type ('a, +'res) schema = ('a, 'a, 'res) S.spine list
+
+(* Metablock stuff. *)
 
 let variant ?(fields = []) name index = { name; index; fields }
 let record fields = { name = ""; index = 0; fields }
 
 let rec meta: type a b c. (a, b, c) V.spine -> _ = V.(function
 | K (_, c) -> c
-| A (s, _, _) -> meta s
-| R (s, _) -> meta s)
+| R (s, _) -> meta s
+| A (s, _, _) -> meta s)
+
+(* Generic representations of n-parameter types -- "generics". *)
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view
@@ -85,7 +91,9 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 =
                  ('e, 'r) app -> ('f, 'r) app -> ('g, 'r) app -> ('h, 'r) app ->
                  ('i, 'r) app -> ('x, 'r) schema }
 
-module type Pi = sig
+(* Generic function families. *)
+
+module type Gfun = sig
   type 'a r
   val g0 :  'x g0 -> 'x r
   val g1 :  ('a, 'x) g1 -> 'a r -> 'x r
@@ -104,15 +112,19 @@ module type Pi = sig
             'c r -> 'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'i r -> 'x r
 end
 
+(* [app] instantiation. *)
+
 module Generic (R: sig type 'a r end) = struct
 
-  type p
   type 'a r = 'a R.r
 
+  (* The "brand". *)
+  type p
   external w   : 'a r -> ('a, p) app = "%identity"
   external (!!) : ('a, p) app -> 'a r = "%identity"
-
   let ($) f x = f (w x)
+
+  (* Helpers to pick out view/schema and inject n arguments. *)
 
   let v0 x (y: _ g0)                   = x y.view
   let v1 x (y: _ g1) a                 = x (y.view (w a))
@@ -135,6 +147,8 @@ module Generic (R: sig type 'a r end) = struct
   let s7 x (y: _ g7) a b c d e f g     = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g))
   let s8 x (y: _ g8) a b c d e f g h   = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h))
   let s9 x (y: _ g9) a b c d e f g h i = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h) (w i))
+
+  (* The same, but module-level. *)
 
   module View_f (F: sig val f: ('a, p) view -> 'a r end) = struct
     type nonrec 'a r = 'a r

@@ -8,14 +8,14 @@ type meta = { name : string; index : int; fields : string list }
 module V : sig
   type (+_, _, +_) spine =
   | K : 'a * meta -> ('a, 'x, 'res) spine
-  | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine * 'x -> ('b, 'x, 'res) spine
+  | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 module S : sig
   type (+_, _, +_) spine =
   | K : 'a * meta -> ('a, 'x, 'res) spine
-  | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine -> ('b, 'x, 'res) spine
+  | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
 type ('a, +'res) view = 'a -> ('a, 'a, 'res) V.spine
@@ -82,7 +82,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 =
                  ('i, 'r) app -> ('x, 'r) schema }
 
 
-module type Pi = sig
+module type Gfun = sig
   type 'a r
   val g0 :  'x g0 -> 'x r
   val g1 :  ('a, 'x) g1 -> 'a r -> 'x r
@@ -108,7 +108,7 @@ module Generic (R: sig type 'a r end) : sig
 
   external w : 'a r -> ('a, p) app = "%identity"
   external (!!) : ('a, p) app -> 'a r = "%identity"
-  val ($) : (('a, p) app -> 'b) -> 'a r -> 'b [@@inline]
+  val ($) : (('a, p) app -> 'b) -> 'a r -> 'b
 
   val v0 : (('x, p) view -> 'y) -> 'x g0 -> 'y
   val v1 : (('x, p) view -> 'y) -> ('a, 'x) g1 -> 'a r -> 'y
@@ -147,8 +147,8 @@ module Generic (R: sig type 'a r end) : sig
            'a r -> 'b r -> 'c r -> 'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'i r -> 'y
 
   module View_f (F: sig val f: ('a, p) view -> 'a r end):
-    Pi with type 'a r = 'a r
+    Gfun with type 'a r = 'a r
   module Schema_f (F: sig val f: ('a, p) schema -> 'a r end):
-    Pi with type 'a r = 'a r
+    Gfun with type 'a r = 'a r
 
 end with type 'a r = 'a R.r

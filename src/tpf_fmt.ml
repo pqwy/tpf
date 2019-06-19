@@ -69,4 +69,4 @@ let g_pp8 g8 = v8 g_pp g8
 let g_pp9 g9 = v9 g_pp g9
 
 (* Or *)
-include (View_f (struct let f = g_pp end): Pi with type 'a r := 'a r)
+include (View_f (struct let f = g_pp end): Gfun with type 'a r := 'a r)
