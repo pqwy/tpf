@@ -11,12 +11,3 @@
   (wrapped false)
   (modules tpf_std)
   (libraries tpf))
-
-(library
-  (public_name tpf.fmt)
-  (name tpf_fmt)
-  (synopsis "Generic Fmt pretty-printers")
-  (wrapped false)
-  (modules tpf_fmt)
-  (optional)
-  (libraries tpf fmt))
