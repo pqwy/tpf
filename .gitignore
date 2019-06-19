@@ -1,0 +1,10 @@
+_build
+.merlin
+*.install
+
+tmp
+*~
+\.\#*
+\#*#
+
+rondom
