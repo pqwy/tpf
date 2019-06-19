@@ -82,6 +82,25 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 =
                  ('i, 'r) app -> ('x, 'r) schema }
 
 
+module type Pi = sig
+  type 'a r
+  val g0 :  'x g0 -> 'x r
+  val g1 :  ('a, 'x) g1 -> 'a r -> 'x r
+  val g2 :  ('a, 'b, 'x) g2 -> 'a r -> 'b r -> 'x r
+  val g3 :  ('a, 'b, 'c, 'x) g3 -> 'a r -> 'b r -> 'c r -> 'x r
+  val g4 :  ('a, 'b, 'c, 'd, 'x) g4 -> 'a r -> 'b r -> 'c r -> 'd r -> 'x r
+  val g5 :  ('a, 'b, 'c, 'd, 'e, 'x) g5 -> 'a r -> 'b r -> 'c r -> 'd r ->
+            'e r -> 'x r
+  val g6 :  ('a, 'b, 'c, 'd, 'e, 'f, 'x) g6 -> 'a r -> 'b r -> 'c r -> 'd r ->
+            'e r -> 'f r -> 'x r
+  val g7 :  ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'x) g7 -> 'a r -> 'b r -> 'c r ->
+            'd r -> 'e r -> 'f r -> 'g r -> 'x r
+  val g8 :  ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) g8 -> 'a r -> 'b r -> 'c r ->
+            'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'x r
+  val g9 :  ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 -> 'a r -> 'b r ->
+            'c r -> 'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'i r -> 'x r
+end
+
 module Generic (R: sig type 'a r end) : sig
 
   type 'a r
@@ -126,5 +145,10 @@ module Generic (R: sig type 'a r end) : sig
            'a r -> 'b r -> 'c r -> 'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'y
   val s9 : (('x, p) schema -> 'y) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 ->
            'a r -> 'b r -> 'c r -> 'd r -> 'e r -> 'f r -> 'g r -> 'h r -> 'i r -> 'y
+
+  module View_f (F: sig val f: ('a, p) view -> 'a r end):
+    Pi with type 'a r = 'a r
+  module Schema_f (F: sig val f: ('a, p) schema -> 'a r end):
+    Pi with type 'a r = 'a r
 
 end with type 'a r = 'a R.r

@@ -1,5 +1,6 @@
 open Tpf
 
+(* Either *)
 val g_pp0: 'x g0 -> 'x Fmt.t
 val g_pp1: ('a, 'x) g1 -> 'a Fmt.t -> 'x Fmt.t
 val g_pp2: ('a, 'b, 'x) g2 -> 'a Fmt.t -> 'b Fmt.t -> 'x Fmt.t
@@ -18,6 +19,9 @@ val g_pp8: ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) g8 -> 'a Fmt.t -> 'b Fmt.t ->
 val g_pp9: ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) g9 -> 'a Fmt.t ->
            'b Fmt.t -> 'c Fmt.t -> 'd Fmt.t -> 'e Fmt.t -> 'f Fmt.t ->
            'g Fmt.t -> 'h Fmt.t -> 'i Fmt.t -> 'x Fmt.t
+
+(* Or *)
+include Pi with type 'a r := 'a Fmt.t
 
 (* To construct functions > 9. But there is no g10. Drop? *)
 type p

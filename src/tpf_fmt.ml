@@ -56,6 +56,7 @@ let rec g_pp: type a. (a, _) view -> a Fmt.t = fun v ppf x ->
       | "" -> record ppf (g_pp v) fields s
       | name -> named ppf name (fun ppf -> record ppf (g_pp v) fields) s
 
+(* Either *)
 let g_pp0 g0 = v0 g_pp g0
 let g_pp1 g1 = v1 g_pp g1
 let g_pp2 g2 = v2 g_pp g2
@@ -66,3 +67,6 @@ let g_pp6 g6 = v6 g_pp g6
 let g_pp7 g7 = v7 g_pp g7
 let g_pp8 g8 = v8 g_pp g8
 let g_pp9 g9 = v9 g_pp g9
+
+(* Or *)
+include (View_f (struct let f = g_pp end): Pi with type 'a r := 'a r)
