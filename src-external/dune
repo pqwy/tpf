@@ -1,8 +1,17 @@
 (library
   (public_name tpf.fmt)
   (name tpf_fmt)
-  (synopsis "Generic Fmt pretty-printers")
+  (synopsis "Generic pretty-printers")
   (wrapped false)
   (modules tpf_fmt)
   (optional)
   (libraries tpf fmt))
+
+(library
+  (public_name tpf.sexplib)
+  (name tpf_sexplib)
+  (synopsis "Generic sexps")
+  (wrapped false)
+  (modules tpf_sexplib)
+  (optional)
+  (libraries tpf sexplib))
