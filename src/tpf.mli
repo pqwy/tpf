@@ -23,7 +23,15 @@ type ('a, +'res) schema = ('a, 'a, 'res) S.spine list
 
 val variant : ?fields : string list -> string -> int -> meta
 val record : string list -> meta
-val meta : ('a, 'b, 'c) V.spine -> meta
+
+val v_meta : ('a, 'b, 'c) V.spine -> meta
+val s_meta : ('a, 'b, 'c) S.spine -> meta
+
+val v_name : ('a, 'b, 'c) V.spine -> string
+val s_name : ('a, 'b, 'c) S.spine -> string
+
+val v_fields : ('a, 'b, 'c) V.spine -> string list
+val s_fields : ('a, 'b, 'c) S.spine -> string list
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view

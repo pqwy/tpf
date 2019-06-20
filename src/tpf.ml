@@ -28,12 +28,20 @@ type ('a, +'res) schema = ('a, 'a, 'res) S.spine list
 let variant ?(fields = []) name index = { name; index; fields }
 let record fields = { name = ""; index = 0; fields }
 
-let rec meta: type a b c. (a, b, c) V.spine -> _ = V.(function
-| K (_, c) -> c
-| R (s, _) -> meta s
-| A (s, _, _) -> meta s)
+let rec v_meta: 'a 'b 'c. ('a, 'b, 'c) V.spine -> _ = V.(function
+| K (_, m) -> m
+| R (s, _) -> v_meta s
+| A (s, _, _) -> v_meta s)
+let rec s_meta: 'a 'b 'c. ('a, 'b, 'c) S.spine -> _ = S.(function
+| K (_, m) -> m
+| R s -> s_meta s
+| A (s, _) -> s_meta s)
+let v_name s = (v_meta s).name
+let s_name s = (s_meta s).name
+let v_fields s = (v_meta s).fields
+let s_fields s = (s_meta s).fields
 
-(* Generic representations of n-parameter types -- "generics". *)
+(* Generic representations of n-point types -- "generics". *)
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view
