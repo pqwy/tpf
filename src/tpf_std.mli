@@ -2,6 +2,8 @@ open Tpf
 
 val unit : unit g0
 val pair : ('a, 'b, 'a * 'b) g2
+val triple : ('a, 'b, 'c, 'a * 'b * 'c) g3
+val quadruple : ('a, 'b, 'c, 'd, 'a * 'b * 'c * 'd) g4
 val list : ('a, 'a list) g1
 val seq : ('a, 'a Seq.t) g1
 val option : ('a, 'a option) g1
