@@ -81,13 +81,13 @@ let geq v1 v2 a b =
   let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> bool =
   V.( fun s1 s2 -> match s1, s2 with
     | K (_, m1)   , K (_, m2)    -> m1.index = m2.index
-    | A (s1, a, f), A (s2, b, g) -> go s1 s2 && Eq1.(!!f).eq a Eq2.(!!g) b
+    | A (s1, a, f), A (s2, b, g) -> go s1 s2 && Eq1.(!f).eq a Eq2.(!g) b
     | R (s1, x1)  , R (s2, x2)   -> go s1 s2 && go (v1 x1) (v2 x2)
     | _           , _            -> false ) in
   go (v1 a) (v2 b)
 
 let ($$) (view1, view2) f =
-  let (f1, f2) = jmeq f in Eq1.(view1 $ f1), Eq2.(view2 $ f2)
+  let (f1, f2) = jmeq f in view1 Eq1.(!:f1), view2 Eq2.(!:f2)
 let go (v1, v2) = geq v1 v2
 
 let eq0 (g: _ g0) =
@@ -127,22 +127,20 @@ let lift (type a) (compare: a -> a -> int) =
 module Cmp1 = Generic (struct type 'a r = 'a jmcmp end)
 module Cmp2 = Generic (struct type 'a r = 'a ttag end)
 
+let v_index s = (v_meta s).index
+
 let gcompare v1 v2 a b =
   let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> int =
   V.( fun s1 s2 -> match s1, s2 with
-    | K (_, m1)   , K (_, m2)    -> m1.index - m2.index
     | A (s1, a, f), A (s2, b, r) ->
-      ( match go s1 s2 with 0 -> Cmp1.(!!f).cmp a Cmp2.(!!r) b | c -> c )
-    | R (s1, x1)  , R (s2, x2)   ->
+      ( match go s1 s2 with 0 -> Cmp1.(!f).cmp a Cmp2.(!r) b | c -> c )
+    | R (s1, x1), R (s2, x2) ->
       ( match go s1 s2 with 0 -> go (v1 x1) (v2 x2) | c -> c )
-    | A (s1, _, _), _            -> go s1 s2
-    | R (s1, _)   , _            -> go s1 s2
-    | _           , A (s2, _, _) -> go s1 s2
-    | _           , R (s2, _)    -> go s1 s2 ) in
+    | _ -> v_index s1 - v_index s2 ) in
   match go (v1 a) (v2 b) with 0 -> 0 | c when c < 0 -> -1 | _ -> 1
 
 let ($$) (view1, view2) f =
-  let (f1, f2) = lift f in Cmp1.(view1 $ f1), Cmp2.(view2 $ f2)
+  let (f1, f2) = lift f in Cmp1.(view1 !:f1), Cmp2.(view2 !:f2)
 let go (v1, v2) = gcompare v1 v2
 
 let cmp0 (g: _ g0) =

@@ -111,12 +111,11 @@ end
 
 module Generic (R: sig type 'a r end) : sig
 
-  type 'a r
+  type 'a r = 'a R.r
   type p
 
-  external w : 'a r -> ('a, p) app = "%identity"
-  external (!!) : ('a, p) app -> 'a r = "%identity"
-  val ($) : (('a, p) app -> 'b) -> 'a r -> 'b
+  external (!:) : 'a r -> ('a, p) app = "%identity"
+  external (!) : ('a, p) app -> 'a r = "%identity"
 
   val v0 : (('x, p) view -> 'y) -> 'x g0 -> 'y
   val v1 : (('x, p) view -> 'y) -> ('a, 'x) g1 -> 'a r -> 'y
@@ -159,4 +158,4 @@ module Generic (R: sig type 'a r end) : sig
   module Schema_f (F: sig val f: ('a, p) schema -> 'a r end):
     Gfun with type 'a r = 'a r
 
-end with type 'a r = 'a R.r
+end

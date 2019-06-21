@@ -1,10 +1,10 @@
 open Tpf
 
-include Generic (struct type 'a r = 'a Fmt.t end)
-
 let sep_by pp =
   let first = ref true in
   fun ppf () -> if !first then first := false else pp ppf ()
+
+include Generic (struct type 'a r = 'a Fmt.t end)
 
 open V
 
@@ -22,25 +22,25 @@ let is_empty s = function [] -> () | fs -> err_extra_fields s fs
 let parens pp ppf x = Fmt.(string ppf "("; pp ppf x; string ppf ")")
 let braces pp ppf x = Fmt.(string ppf "{"; pp ppf x; string ppf "}")
 
-let rec g_pp: type a. (a, _) view -> a Fmt.t = fun v ppf x ->
+let rec g_pp: 'a. ('a, _) view -> 'a Fmt.t = fun v ppf x ->
   let variant ppf s =
     let rec go: 'a. _ -> ('a, _, _) spine Fmt.t = fun sep ppf -> function
     | K _ -> ()
-    | A (s, x, pp_x) -> go sep ppf s; sep ppf (); !!pp_x ppf x
-    | R (s, x) -> go sep ppf s; sep ppf (); g_pp v ppf x in
+    | A (s, a, f) -> go sep ppf s; sep ppf (); !f ppf a
+    | R (s, a) -> go sep ppf s; sep ppf (); g_pp v ppf a in
     match s with
-    | A (K _, x, pp_x) -> !!pp_x ppf x
-    | R (K _, x) -> g_pp v ppf x
+    | A (K _, a, f) -> !f ppf a
+    | R (K _, a) -> g_pp v ppf a
     | s -> parens (go (sep_by Fmt.comma)) ppf s
   and record fields ppf s =
     let field ppf s sep pp_x x = function
-    | f::fs -> sep ppf (); Fmt.pf ppf "@[<1>%s =@ %a@]" f pp_x x; fs
+    | f0::fs -> sep ppf (); Fmt.pf ppf "@[<1>%s =@ %a@]" f0 pp_x x; fs
     | [] -> err_missing_fields s in
     let rec go: 'a. _ -> _ -> _ -> ('a, _, _) spine -> _ =
       fun sep fields ppf -> function
     | K _ -> fields
-    | A (s, x, pp_x) -> go sep fields ppf s |> field ppf s sep !!pp_x x
-    | R (s, x) -> go sep fields ppf s |> field ppf s sep (g_pp v) x in
+    | A (s, a, f) -> go sep fields ppf s |> field ppf s sep !f a
+    | R (s, a) -> go sep fields ppf s |> field ppf s sep (g_pp v) a in
     let pp_s ppf s = go (sep_by Fmt.semi) fields ppf s |> is_empty s in
     braces pp_s ppf s in
   let s = v x in

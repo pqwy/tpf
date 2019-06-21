@@ -128,33 +128,32 @@ module Generic (R: sig type 'a r end) = struct
 
   (* The "brand". *)
   type p
-  external w   : 'a r -> ('a, p) app = "%identity"
-  external (!!) : ('a, p) app -> 'a r = "%identity"
-  let ($) f x = f (w x)
+  external (!:) : 'a r -> ('a, p) app = "%identity"
+  external (!) : ('a, p) app -> 'a r = "%identity"
 
   (* Helpers to pick out view/schema and inject n arguments. *)
 
   let v0 x (y: _ g0)                   = x y.view
-  let v1 x (y: _ g1) a                 = x (y.view (w a))
-  let v2 x (y: _ g2) a b               = x (y.view (w a) (w b))
-  let v3 x (y: _ g3) a b c             = x (y.view (w a) (w b) (w c))
-  let v4 x (y: _ g4) a b c d           = x (y.view (w a) (w b) (w c) (w d))
-  let v5 x (y: _ g5) a b c d e         = x (y.view (w a) (w b) (w c) (w d) (w e))
-  let v6 x (y: _ g6) a b c d e f       = x (y.view (w a) (w b) (w c) (w d) (w e) (w f))
-  let v7 x (y: _ g7) a b c d e f g     = x (y.view (w a) (w b) (w c) (w d) (w e) (w f) (w g))
-  let v8 x (y: _ g8) a b c d e f g h   = x (y.view (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h))
-  let v9 x (y: _ g9) a b c d e f g h i = x (y.view (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h) (w i))
+  let v1 x (y: _ g1) a                 = x (y.view !:a)
+  let v2 x (y: _ g2) a b               = x (y.view !:a !:b)
+  let v3 x (y: _ g3) a b c             = x (y.view !:a !:b !:c)
+  let v4 x (y: _ g4) a b c d           = x (y.view !:a !:b !:c !:d)
+  let v5 x (y: _ g5) a b c d e         = x (y.view !:a !:b !:c !:d !:e)
+  let v6 x (y: _ g6) a b c d e f       = x (y.view !:a !:b !:c !:d !:e !:f)
+  let v7 x (y: _ g7) a b c d e f g     = x (y.view !:a !:b !:c !:d !:e !:f !:g)
+  let v8 x (y: _ g8) a b c d e f g h   = x (y.view !:a !:b !:c !:d !:e !:f !:g !:h)
+  let v9 x (y: _ g9) a b c d e f g h i = x (y.view !:a !:b !:c !:d !:e !:f !:g !:h !:i)
 
   let s0 x (y: _ g0)                   = x y.schema
-  let s1 x (y: _ g1) a                 = x (y.schema (w a))
-  let s2 x (y: _ g2) a b               = x (y.schema (w a) (w b))
-  let s3 x (y: _ g3) a b c             = x (y.schema (w a) (w b) (w c))
-  let s4 x (y: _ g4) a b c d           = x (y.schema (w a) (w b) (w c) (w d))
-  let s5 x (y: _ g5) a b c d e         = x (y.schema (w a) (w b) (w c) (w d) (w e))
-  let s6 x (y: _ g6) a b c d e f       = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f))
-  let s7 x (y: _ g7) a b c d e f g     = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g))
-  let s8 x (y: _ g8) a b c d e f g h   = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h))
-  let s9 x (y: _ g9) a b c d e f g h i = x (y.schema (w a) (w b) (w c) (w d) (w e) (w f) (w g) (w h) (w i))
+  let s1 x (y: _ g1) a                 = x (y.schema !:a)
+  let s2 x (y: _ g2) a b               = x (y.schema !:a !:b)
+  let s3 x (y: _ g3) a b c             = x (y.schema !:a !:b !:c)
+  let s4 x (y: _ g4) a b c d           = x (y.schema !:a !:b !:c !:d)
+  let s5 x (y: _ g5) a b c d e         = x (y.schema !:a !:b !:c !:d !:e)
+  let s6 x (y: _ g6) a b c d e f       = x (y.schema !:a !:b !:c !:d !:e !:f)
+  let s7 x (y: _ g7) a b c d e f g     = x (y.schema !:a !:b !:c !:d !:e !:f !:g)
+  let s8 x (y: _ g8) a b c d e f g h   = x (y.schema !:a !:b !:c !:d !:e !:f !:g !:h)
+  let s9 x (y: _ g9) a b c d e f g h i = x (y.schema !:a !:b !:c !:d !:e !:f !:g !:h !:i)
 
   (* The same, but module-level. *)
 

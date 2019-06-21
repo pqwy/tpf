@@ -25,5 +25,5 @@ include Gfun with type 'a r := 'a Fmt.t
 
 (* To construct functions > 9. But there is no g10. Drop? *)
 type p
-val g_pp: ('a, p) Tpf.view -> 'a Fmt.t
-val ($) : (('a, p) app -> 'b) -> 'a Fmt.t -> 'b
+(* val g_pp: ('a, p) Tpf.view -> 'a Fmt.t *)
+val (!:) : 'a Fmt.t -> ('a, p) app
