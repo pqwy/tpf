@@ -20,13 +20,13 @@ module Enc = struct
   let rec g_to_sexp: 'a. ('a, _) view -> 'a e = fun v x ->
     let rec variant: 'a. _ -> _ -> ('a, _, _) spine -> _ = fun v0 acc -> function
     | K _ -> acc
-    | R (s, x) -> variant v0 (g_to_sexp v0 x :: acc) s
-    | A (s, x, f) -> variant v0 (!!f x :: acc) s in
+    | A (s, a, f) -> variant v0 (!f a :: acc) s
+    | R (s, a) -> variant v0 (g_to_sexp v0 a :: acc) s in
     let rec record: 'a. _ -> _ -> _ -> ('a, _, _) spine -> _ =
       fun v0 acc fields s -> match s, fields with
     | K _, [] -> acc
-    | R (s, x), f::fs -> record v0 (field f (g_to_sexp v0 x) :: acc) fs s
-    | A (s, x, f_x), f::fs -> record v0 (field f (!!f_x x) :: acc) fs s
+    | A (s, a, f), f0::fs -> record v0 (field f0 (!f a) :: acc) fs s
+    | R (s, a), f0::fs -> record v0 (field f0 (g_to_sexp v0 a) :: acc) fs s
     | _ -> err_spine_fields s in
     let s = v x in
     let m = v_meta s in
@@ -69,20 +69,36 @@ module Dec = struct
   let err_record_component =
     of_sexp_error (Failure "bad record element: expecting (<name> <value>)")
 
+  (* Anamorphisms have a couple of unrolled steps to shrink the closure
+     chains. But adding too much costs time. *)
+
   let variant goto10 s =
     let rec go: 'a. ('a, _, _) spine -> ('a -> _) -> _ =
       fun s k -> match s with
-    | K (f, _) -> fun xs -> k f xs
-    | R s -> go s (fun f -> function
-      | [] -> err_arity () | x::xs -> k (f (goto10 x)) xs)
-    | A (s, f_a) -> go s (fun f -> function
-      | [] -> err_arity () | x::xs -> k (f (!!f_a x)) xs) in
+    | K (v, _) -> fun xs -> k v xs
+    | A (A (A (s, a), b), c) ->
+        go s (fun f -> function
+          | x0::x1::x2::xs -> k (f (!a x0) (!b x1) (!c x2)) xs
+          | _ -> err_arity ())
+    | A (A (s, a), b) ->
+        go s (fun f -> function
+          | x0::x1::xs -> k (f (!a x0) (!b x1)) xs
+          | _ -> err_arity ())
+    | A (s, a) ->
+        go s (fun f -> function
+          | x::xs -> k (f (!a x)) xs
+          | _ -> err_arity ())
+    | R s ->
+        go s (fun f -> function
+          | x::xs -> k (f (goto10 x)) xs
+          | _ -> err_arity ()) in
     go s (fun x -> function [] -> x | _ -> err_arity ())
 
   let field_map_of_sexp xs =
     let f map = function
-    | List [Atom field; _] when Smap.mem field map -> err_duplicate_field field
-    | List [Atom field; xs] -> Smap.add field xs map
+    | List [Atom field; xs] ->
+        if Smap.mem field map then err_duplicate_field field
+        else Smap.add field xs map
     | sexp -> err_record_component sexp in
     List.fold_left f Smap.empty xs
 
@@ -94,21 +110,29 @@ module Dec = struct
     let rec go: 'a. ('a, _, _) spine -> _ -> ('a -> _) -> _ =
       fun s rfields k -> match s, rfields with
     | K (f, _), [] -> (fun map -> k f map)
+    | A (A (A (s, a), b), c), f0::f1::f2::fields ->
+        go s fields (fun f map ->
+          k (f (!a (get_field f2 map)) (!b (get_field f1 map))
+               (!c (get_field f0 map))) map)
+    | A (A (s, a), b), f0::f1::fields ->
+        go s fields (fun f map ->
+          k (f (!a (get_field f1 map)) (!b (get_field f0 map))) map)
+    | A (s, a), f0::fields ->
+        go s fields (fun f map ->
+          k (f (!a (get_field f0 map))) map)
     | R s, field::fields ->
         go s fields (fun f map -> k (f (goto10 (get_field field map))) map)
-    | A (s, f_a), field::fields ->
-        go s fields (fun f map -> k (f (!!f_a (get_field field map))) map)
     | _ -> err_spine_fields s in
     let fields = s_fields s in
     let arity = List.length fields in
     let extract = go s (List.rev fields) (fun x _ -> x) in
-    (fun xs ->
+    fun xs ->
       let map = field_map_of_sexp xs in
       if Smap.cardinal map <= arity then extract map
-      else err_extra_fields fields map)
+      else err_extra_fields fields map
 
   let g_of_sexp = function
-  | [s] when (s_meta s).name == "" ->
+  | [s] when (s_meta s).name = "" ->
       let rec goto10 sexp =
         try match sexp with
         | List sexps -> Lazy.force f sexps
