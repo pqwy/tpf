@@ -15,3 +15,12 @@
   (modules tpf_sexplib)
   (optional)
   (libraries tpf sexplib))
+
+(library
+  (public_name tpf.cmdliner)
+  (name tpf_cmdliner)
+  (synopsis "Generic command lines")
+  (wrapped false)
+  (modules tpf_cmdliner)
+  (optional)
+  (libraries tpf cmdliner))
