@@ -3,35 +3,29 @@
 
 type (+'a, +'f) app
 
-type meta = { name : string; index : int; fields : string list }
-
 module V : sig
   type (+_, _, +_) spine =
-  | K : 'a * meta -> ('a, 'x, 'res) spine
+  | K : 'a -> ('a, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine * 'x -> ('b, 'x, 'res) spine
   | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
+
 module S : sig
   type (+_, _, +_) spine =
-  | K : 'a * meta -> ('a, 'x, 'res) spine
+  | K : 'a -> ('a, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine -> ('b, 'x, 'res) spine
   | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
-type ('a, +'res) view = 'a -> ('a, 'a, 'res) V.spine
-type ('a, +'res) schema = ('a, 'a, 'res) S.spine list
+type meta = { name : string; index : int; fields : string list }
+type ('a, +'res) view = ('a -> ('a, 'a, 'res) V.spine) * ('a -> meta)
+type ('a, +'res) schema = (('a, 'a, 'res) S.spine * meta) list
+
+val spine : 'a * 'b -> 'a
+val meta : 'a * 'b -> 'b
 
 val variant : ?fields : string list -> string -> int -> meta
 val record : string list -> meta
-
-val v_meta : ('a, 'b, 'c) V.spine -> meta
-val s_meta : ('a, 'b, 'c) S.spine -> meta
-
-val v_name : ('a, 'b, 'c) V.spine -> string
-val s_name : ('a, 'b, 'c) S.spine -> string
-
-val v_fields : ('a, 'b, 'c) V.spine -> string list
-val s_fields : ('a, 'b, 'c) S.spine -> string list
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view

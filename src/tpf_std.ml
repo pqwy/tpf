@@ -3,63 +3,72 @@ open Tpf
 (* Stdlib generics *)
 
 let m0 = variant "()" 0
-let k0 = V.K ((), m0)
-let unit: _ g0 = { view = (fun () -> k0); schema = S.[ K ((), m0) ] }
+let k0 = V.K ()
+let unit: _ g0 =
+  { view = (fun () -> k0), (fun () -> m0)
+  ; schema = S.[ K (), m0 ] }
 
-let pair a b = a, b
+let cons a b = a, b
 let m0 = variant "(,)" 0
-let k0 = V.K (pair, m0)
+let k0 = V.K cons
 let pair: _ g2 =
-  { view = V.(fun a b (x, y) -> A (A (k0, x, a), y, b))
-  ; schema = fun a b -> S.[ A (A (K (pair, m0), a), b) ] }
+  { view = (fun a b -> V.(fun (x, y) -> A (A (k0, x, a), y, b)),
+           (fun _ -> m0))
+  ; schema = fun a b -> S.[ A (A (K cons, a), b), m0 ] }
 
-let triple a b c = a, b, c
+let cons a b c = a, b, c
 let m0 = variant "(,,)" 0
-let k0 = V.K (triple, m0)
+let k0 = V.K cons
 let triple: _ g3 =
-  { view = V.(fun a b c (x, y, z) -> A (A (A (k0, x, a), y, b), z, c))
-  ; schema = fun a b c -> S.[ A (A (A (K (triple, m0), a), b), c) ] }
+  { view = (fun a b c ->
+      V.(fun (x, y, z) -> A (A (A (k0, x, a), y, b), z, c)),
+      (fun _ -> m0))
+  ; schema = S.(fun a b c -> [A (A (A (K cons, a), b), c), m0]) }
 
-let quadruple a b c d = a, b, c, d
+let cons a b c d = a, b, c, d
 let m0 = variant "(,,,)" 0
-let k0 = V.K (quadruple, m0)
+let k0 = V.K cons
 let quadruple: _ g4 =
-  { view = V.(fun a b c d (x, y, z, w) ->
-      A (A (A (A (k0, x, a), y, b), z, c), w, d))
-  ; schema = fun a b c d ->
-      S.[ A (A (A (A (K (quadruple, m0), a), b), c), d) ] }
+  { view = (fun a b c d ->
+      V.(fun (x, y, z, w) -> A (A (A (A (k0, x, a), y, b), z, c), w, d)),
+      (fun _ -> m0))
+  ; schema = S.(fun a b c d -> [A (A (A (A (K cons, a), b), c), d), m0]) }
 
-let cons x xs = x :: xs
 let m0 = variant "[]" 0 and m1 = variant "(::)" 1
-let k0 = V.K ([], m0) and k1 = V.K (cons, m1)
-let view a = V.(function
-| [] -> k0
-| x::xs -> R (A (k1, x, a), xs))
-let schema a = S.[ K ([], m0); R (A (K (cons, m1), a)) ]
-let list: _ g1 = { view; schema }
+let k0 = V.K [] and k1 = V.K List.cons
+let list: _ g1 =
+  { view = (fun a ->
+      V.(function [] -> k0 | x::xs -> R (A (k1, x, a), xs)),
+      (function [] -> m0 | _ -> m1))
+  ; schema = S.(fun a -> [K [], m0; R (A (K List.cons, a)), m1]) }
 
 let scons x xs () = Seq.Cons (x, xs)
 let m0 = variant "Nil" 0 and m1 = variant "Cons" 1
-let k0 = V.K (Seq.empty, m0) and k1 = V.K (scons, m1)
-let view a s = V.(match s () with
-| Seq.Nil -> k0
-| Seq.Cons (x, s) -> R (A (k1, x, a), s))
-let schema a = S.[ K (Seq.empty, m0); R (A (K (scons, m1), a)) ]
-let seq: _ g1 = { view; schema }
+let k0 = V.K Seq.empty and k1 = V.K scons
+let seq: _ g1 =
+  { view = Seq.(fun a ->
+      V.(fun s -> match s () with
+        | Cons (x, s) -> R (A (k1, x, a), s)
+        | _ -> k0),
+      (fun s -> match s () with Nil -> m0 | _ -> m1))
+  ; schema = S.(fun a -> [K Seq.empty, m0; R (A (K scons, a)), m1]) }
 
 let some x = Some x
 let m0 = variant "None" 0 and m1 = variant "Some" 1
-let k0 = V.K (None, m0) and k1 = V.K (some, m1)
-let view a = V.(function Some x -> A (k1, x, a) | _ -> k0)
-let schema a = S.[ K (None, m0); A (K (some, m1), a) ]
-let option: _ g1 = { view; schema }
+let k0 = V.K None and k1 = V.K some
+let option: _ g1 =
+  { view = (fun a -> V.(function Some x -> A (k1, x, a) | _ -> k0),
+           (function None -> m0 | _ -> m1))
+  ; schema = S.(fun a -> [K None, m0; A (K some, a), m1]) }
 
 let ok x = Ok x and error x = Error x
 let m0 = variant "Ok" 0 and m1 = variant "Error" 1
-let k0 = V.K (ok, m0) and k1 = V.K (error, m1)
-let view a b = V.(function Ok x -> A (k0, x, a) | Error y -> A (k1, y, b))
-let schema a b = S.[ A (K (ok, m0), a); A (K (error, m1), b) ]
-let result: _ g2 = { view; schema }
+let k0 = V.K ok and k1 = V.K error
+let result: _ g2 =
+  { view = (fun a b ->
+      V.(function Ok x -> A (k0, x, a) | Error y -> A (k1, y, b)),
+      (function Ok _ -> m0 | _ -> m1))
+  ; schema = S.(fun a b -> [A (K ok, a), m0; A (K error, b), m1]) }
 
 (* Equality *)
 
@@ -77,14 +86,16 @@ let jmeq (type a) (eq: a -> a -> bool) =
 module Eq1 = Generic (struct type 'a r = 'a jmeq end)
 module Eq2 = Generic (struct type 'a r = 'a ttag end)
 
-let geq v1 v2 a b =
-  let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> bool =
-  V.( fun s1 s2 -> match s1, s2 with
-    | K (_, m1)   , K (_, m2)    -> m1.index = m2.index
-    | A (s1, a, f), A (s2, b, g) -> go s1 s2 && Eq1.(!f).eq a Eq2.(!g) b
-    | R (s1, x1)  , R (s2, x2)   -> go s1 s2 && go (v1 x1) (v2 x2)
-    | _           , _            -> false ) in
-  go (v1 a) (v2 b)
+let geq (vs1, vm1) (vs2, vm2) =
+  let open V in
+  let rec eq a b = (vm1 a).index = (vm2 b).index && go (vs1 a) (vs2 b)
+  and go: 'a 'b. ('a, _, _) spine -> ('b, _, _) spine -> bool =
+    fun s1 s2 -> match s1, s2 with
+  | K _         , K _          -> true
+  | A (s1, a, f), A (s2, b, g) -> go s1 s2 && Eq1.(!f).eq a Eq2.(!g) b
+  | R (s1, x1)  , R (s2, x2)   -> go s1 s2 && eq x1 x2
+  | _           , _            -> false in
+  eq
 
 let ($$) (view1, view2) f =
   let (f1, f2) = jmeq f in view1 Eq1.(!:f1), view2 Eq2.(!:f2)
@@ -127,17 +138,22 @@ let lift (type a) (compare: a -> a -> int) =
 module Cmp1 = Generic (struct type 'a r = 'a jmcmp end)
 module Cmp2 = Generic (struct type 'a r = 'a ttag end)
 
-let v_index s = (v_meta s).index
+let err_spine () = invalid_arg "Tpf_std.compare: incoherent spine"
 
-let gcompare v1 v2 a b =
-  let rec go: 'a 'b. ('a, _, _) V.spine -> ('b, _, _) V.spine -> int =
-  V.( fun s1 s2 -> match s1, s2 with
-    | A (s1, a, f), A (s2, b, r) ->
-      ( match go s1 s2 with 0 -> Cmp1.(!f).cmp a Cmp2.(!r) b | c -> c )
-    | R (s1, x1), R (s2, x2) ->
-      ( match go s1 s2 with 0 -> go (v1 x1) (v2 x2) | c -> c )
-    | _ -> v_index s1 - v_index s2 ) in
-  match go (v1 a) (v2 b) with 0 -> 0 | c when c < 0 -> -1 | _ -> 1
+let gcompare (vs1, vm1) (vs2, vm2) =
+  let open V in
+  let rec cmp a b =
+    let c = (vm1 a).index - (vm2 b).index in
+    if c = 0 then go (vs1 a) (vs2 b) else if c < 0 then -1 else 1
+  and go: 'a 'b. ('a, _, _) spine -> ('b, _, _) spine -> int =
+    fun s1 s2 -> match s1, s2 with
+  | A (s1, a, f), A (s2, b, r) ->
+    ( match go s1 s2 with 0 -> Cmp1.(!f).cmp a Cmp2.(!r) b | c -> c )
+  | R (s1, x1), R (s2, x2) ->
+    ( match go s1 s2 with 0 -> cmp x1 x2 | c -> c )
+  | K _, K _-> 0
+  | _ -> err_spine () in
+  cmp
 
 let ($$) (view1, view2) f =
   let (f1, f2) = lift f in Cmp1.(view1 !:f1), Cmp2.(view2 !:f2)

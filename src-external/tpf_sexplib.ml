@@ -4,7 +4,7 @@ open Sexplib
 let pf = Format.fprintf
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 let failwith fmt = Format.kasprintf failwith fmt
-let err_spine_fields _ = invalid_arg "Tpf: bad generic .... who what fields"
+let err_spine_fields () = invalid_arg "Tpf_sexplib: inconsistent field labels"
 
 type 'a e = 'a -> Sexp.t
 
@@ -27,14 +27,13 @@ module Enc = struct
     | K _, [] -> acc
     | A (s, a, f), f0::fs -> record v0 (field f0 (!f a) :: acc) fs s
     | R (s, a), f0::fs -> record v0 (field f0 (g_to_sexp v0 a) :: acc) fs s
-    | _ -> err_spine_fields s in
-    let s = v x in
-    let m = v_meta s in
-    match s, m.fields, m.name with
+    | _ -> err_spine_fields () in
+    let m = meta v x in
+    match spine v x, m.fields, m.name with
     | K _, _     , name -> Atom name
-    | _  , []    , name -> List (Atom name :: variant v [] s)
-    | _  , fields, ""   -> List (record v [] (List.rev fields) s)
-    | _  , fields, name -> List (Atom name :: record v [] (List.rev fields) s)
+    | s  , []    , name -> List (Atom name :: variant v [] s)
+    | s  , fields, ""   -> List (record v [] (List.rev fields) s)
+    | s  , fields, name -> List (Atom name :: record v [] (List.rev fields) s)
 end
 
 module Smap = Map.Make (struct
@@ -51,9 +50,9 @@ module Dec = struct
   open S
   open Sexplib.Sexp
 
-  let err_tagged_form _ = failwith "expecting atom or list with a head atom"
+  let err_tagged_form () = failwith "expecting atom or list with a head atom"
   let err_arity () = failwith "variant arity mismatch"
-  let err_record_form _ = failwith "expecting a list of record components"
+  let err_record_form () = failwith "expecting a list of record components"
   let err_missing_field = failwith "missing record element: %s"
   let err_duplicate_field = failwith "duplicate field: %s"
   let err_extra_fields fields map =
@@ -75,7 +74,7 @@ module Dec = struct
   let variant goto10 s =
     let rec go: 'a. ('a, _, _) spine -> ('a -> _) -> _ =
       fun s k -> match s with
-    | K (v, _) -> fun xs -> k v xs
+    | K v -> fun xs -> k v xs
     | A (A (A (s, a), b), c) ->
         go s (fun f -> function
           | x0::x1::x2::xs -> k (f (!a x0) (!b x1) (!c x2)) xs
@@ -106,10 +105,10 @@ module Dec = struct
     match Smap.find_opt field map with
       Some x -> x | _ -> err_missing_field field
 
-  let record goto10 s =
+  let record goto10 fields s =
     let rec go: 'a. ('a, _, _) spine -> _ -> ('a -> _) -> _ =
       fun s rfields k -> match s, rfields with
-    | K (f, _), [] -> (fun map -> k f map)
+    | K f, [] -> fun map -> k f map
     | A (A (A (s, a), b), c), f0::f1::f2::fields ->
         go s fields (fun f map ->
           k (f (!a (get_field f2 map)) (!b (get_field f1 map))
@@ -122,8 +121,7 @@ module Dec = struct
           k (f (!a (get_field f0 map))) map)
     | R s, field::fields ->
         go s fields (fun f map -> k (f (goto10 (get_field field map))) map)
-    | _ -> err_spine_fields s in
-    let fields = s_fields s in
+    | _ -> err_spine_fields () in
     let arity = List.length fields in
     let extract = go s (List.rev fields) (fun x _ -> x) in
     fun xs ->
@@ -132,22 +130,19 @@ module Dec = struct
       else err_extra_fields fields map
 
   let g_of_sexp = function
-  | [s] when (s_meta s).name = "" ->
+  | [s, m] when m.name = "" ->
       let rec goto10 sexp =
         try match sexp with
         | List sexps -> Lazy.force f sexps
         | _ -> err_record_form ()
         with Failure _ as exn -> of_sexp_error exn sexp
-      and f = lazy (record goto10 s) in
+      and f = lazy (record goto10 m.fields s) in
       goto10
   | ss ->
       let rec map =
-        let f map s =
-          let m = s_meta s in
-          let fields = m.fields and name = m.name in
-          match fields with
-          | [] -> Smap.add name (lazy (variant goto10 s)) map
-          | _ -> Smap.add name (lazy (record goto10 s)) map in
+        let f map (s, m) = match m.fields with
+        | [] -> Smap.add m.name (lazy (variant goto10 s)) map
+        | _ -> Smap.add m.name (lazy (record goto10 m.fields s)) map in
         lazy (List.fold_left f Smap.empty ss)
       and goto10 sexp =
         try match sexp with

@@ -5,43 +5,33 @@
 
 type (+'a, +'f) app
 
-type meta = { name : string; index : int; fields : string list }
-
 module V = struct
   type (+_, _, +_) spine =
-  | K : 'a * meta -> ('a, 'x, 'res) spine
+  | K : 'a -> ('a, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine * 'x -> ('b, 'x, 'res) spine
   | A : ('a -> 'b, 'x, 'res) spine * 'a * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
+
 module S = struct
   type (+_, _, +_) spine =
-  | K : 'a * meta -> ('a, 'x, 'res) spine
+  | K : 'a -> ('a, 'x, 'res) spine
   | R : ('x -> 'b, 'x, 'res) spine -> ('b, 'x, 'res) spine
   | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
-type ('a, +'res) view = 'a -> ('a, 'a, 'res) V.spine
-type ('a, +'res) schema = ('a, 'a, 'res) S.spine list
+type meta = { name : string; index : int; fields : string list }
+
+type ('a, +'res) view = ('a -> ('a, 'a, 'res) V.spine) * ('a -> meta)
+type ('a, +'res) schema = (('a, 'a, 'res) S.spine * meta) list
+
+let spine = fst and meta = snd
 
 (* Metablock stuff. *)
 
 let variant ?(fields = []) name index = { name; index; fields }
 let record fields = { name = ""; index = 0; fields }
 
-let rec v_meta: 'a 'b 'c. ('a, 'b, 'c) V.spine -> _ = V.(function
-| K (_, m) -> m
-| R (s, _) -> v_meta s
-| A (s, _, _) -> v_meta s)
-let rec s_meta: 'a 'b 'c. ('a, 'b, 'c) S.spine -> _ = S.(function
-| K (_, m) -> m
-| R s -> s_meta s
-| A (s, _) -> s_meta s)
-let v_name s = (v_meta s).name
-let s_name s = (s_meta s).name
-let v_fields s = (v_meta s).fields
-let s_fields s = (s_meta s).fields
-
-(* Generic representations of n-point types -- "generics". *)
+(* Generic representations of n-point types -- "generics." *)
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view
