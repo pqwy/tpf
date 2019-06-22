@@ -19,7 +19,7 @@ module S = struct
   | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
-type meta = { name : string; index : int; fields : string list }
+type meta = { name : string; index : int; fields : string array }
 
 type ('a, +'res) view = ('a -> ('a, 'a, 'res) V.spine) * ('a -> meta)
 type ('a, +'res) schema = (('a, 'a, 'res) S.spine * meta) list
@@ -28,7 +28,7 @@ let spine = fst and meta = snd
 
 (* Metablock stuff. *)
 
-let variant ?(fields = []) name index = { name; index; fields }
+let variant ?(fields = [||]) name index = { name; index; fields }
 let record fields = { name = ""; index = 0; fields }
 
 (* Generic representations of n-point types -- "generics." *)
@@ -175,3 +175,31 @@ module Generic (R: sig type 'a r end) = struct
     let g9 g = s9 F.f g
   end
 end
+
+(* pp *)
+
+let invalid_arg fmt = Format.kasprintf invalid_arg fmt
+
+let pf = Format.fprintf
+let string = Format.pp_print_string
+let semi ppf () = pf ppf ";@ "
+let pp_iter ?(sep=semi) iter pp ppf v =
+  let first = ref true in
+  let f x = if !first then first := false else sep ppf (); pp ppf x in
+  iter f v
+
+let pp_meta ppf m = match m.fields with
+| [||] -> pf ppf "%s (...)" m.name
+| fs ->
+    pf ppf "@[<1>%a{%a}@]"
+    (fun ppf -> function "" -> () | n -> string ppf (n ^ " ")) m.name
+    (pp_iter Array.iter string) fs
+
+(* Accessors. *)
+
+let err_field i m = invalid_arg "Tpf: invalid field #%d of %a" i pp_meta m
+
+let fields m = Array.length m.fields
+let field ({ fields; _ } as m) i =
+  Array.(if 0 <= i && i < length fields then unsafe_get fields i
+         else err_field i m)

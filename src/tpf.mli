@@ -17,15 +17,18 @@ module S : sig
   | A : ('a -> 'b, 'x, 'res) spine * ('a, 'res) app -> ('b, 'x, 'res) spine
 end
 
-type meta = { name : string; index : int; fields : string list }
+type meta = { name : string; index : int; fields : string array }
 type ('a, +'res) view = ('a -> ('a, 'a, 'res) V.spine) * ('a -> meta)
 type ('a, +'res) schema = (('a, 'a, 'res) S.spine * meta) list
 
 val spine : 'a * 'b -> 'a
 val meta : 'a * 'b -> 'b
 
-val variant : ?fields : string list -> string -> int -> meta
-val record : string list -> meta
+val variant : ?fields:string array -> string -> int -> meta
+val record : string array -> meta
+
+val fields : meta -> int
+val field : meta -> int -> string
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view
