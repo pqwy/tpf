@@ -27,8 +27,10 @@ val meta : 'a * 'b -> 'b
 val variant : ?fields:string array -> string -> int -> meta
 val record : string array -> meta
 
+val name : meta -> string
 val fields : meta -> int
 val field : meta -> int -> string
+val has_field : meta -> string -> bool
 
 type 'x g0 =
   { view   : 'r. ('x, 'r) view

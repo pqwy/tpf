@@ -26,7 +26,7 @@ module Enc = struct
     | A (s, a, f) -> record v0 (field m i (!f a) :: acc) m (i - i) s
     | R (s, a) -> record v0 (field m i (g_to_sexp v0 a) :: acc) m (i - 1) s in
     let m = meta v x in
-    match spine v x, fields m, m.name with
+    match spine v x, fields m, name m with
     | K _, _, name -> Atom name
     | s  , 0, name -> List (Atom name :: variant v [] s)
     | s  , _, ""   -> List (record v [] m (fields m - 1) s)
@@ -54,8 +54,7 @@ module Dec = struct
   let err_duplicate_field = failwith "duplicate field: %s"
   let err_extra_fields m map =
     let pp ppf =
-      Smap.iter (fun f _ ->
-        if not (Array.mem f m.fields) then pf ppf " %s" f) in
+      Smap.iter (fun f _ -> if not (has_field m f) then pf ppf " %s" f) in
     failwith "extra fields:%a" pp map
   let of_sexp_error exn sexp = match exn with
   | Failure err ->
@@ -129,7 +128,7 @@ module Dec = struct
       else err_extra_fields m map
 
   let g_of_sexp = function
-  | [s, m] when m.name = "" ->
+  | [s, m] when name m = "" ->
       let rec goto10 sexp =
         try match sexp with
         | List sexps -> Lazy.force f sexps
@@ -139,9 +138,10 @@ module Dec = struct
       goto10
   | ss ->
       let rec map =
-        let f map (s, m) = match m.fields with
-        | [||] -> Smap.add m.name (lazy (variant goto10 s)) map
-        | _ -> Smap.add m.name (lazy (record goto10 m s)) map in
+        let f map (s, m) =
+          Smap.add (name m)
+          (lazy (if fields m = 0 then variant goto10 s else record goto10 m s))
+          map in
         lazy (List.fold_left f Smap.empty ss)
       and goto10 sexp =
         try match sexp with

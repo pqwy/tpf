@@ -26,11 +26,6 @@ type ('a, +'res) schema = (('a, 'a, 'res) S.spine * meta) list
 
 let spine = fst and meta = snd
 
-(* Metablock stuff. *)
-
-let variant ?(fields = [||]) name index = { name; index; fields }
-let record fields = { name = ""; index = 0; fields }
-
 (* Generic representations of n-point types -- "generics." *)
 
 type 'x g0 =
@@ -195,11 +190,16 @@ let pp_meta ppf m = match m.fields with
     (fun ppf -> function "" -> () | n -> string ppf (n ^ " ")) m.name
     (pp_iter Array.iter string) fs
 
-(* Accessors. *)
+(* Metablock stuff. *)
+
+let variant ?(fields = [||]) name index = { name; index; fields }
+let record fields = { name = ""; index = 0; fields }
+
+let name m = m.name
+let fields m = Array.length m.fields
+let has_field { fields; _ } f = Array.exists (String.equal f) fields
 
 let err_field i m = invalid_arg "Tpf: invalid field #%d of %a" i pp_meta m
-
-let fields m = Array.length m.fields
 let field ({ fields; _ } as m) i =
   Array.(if 0 <= i && i < length fields then unsafe_get fields i
          else err_field i m)

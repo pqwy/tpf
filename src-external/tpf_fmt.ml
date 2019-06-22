@@ -34,7 +34,7 @@ let rec g_pp: 'a. ('a, _) view -> 'a Fmt.t = fun v ppf x ->
     let pp_s ppf s = go (fields m - 1) ppf s in
     braces pp_s ppf s in
   let m = meta v x in
-  match spine v x, fields m, m.name with
+  match spine v x, fields m, name m with
   | K _, _, name -> Fmt.string ppf name
   | s  , 0, name -> Fmt.pf ppf "@[<1>%s@ %a@]" name variant s
   | s  , _, ""   -> record m ppf s
