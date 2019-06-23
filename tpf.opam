@@ -3,17 +3,27 @@ homepage:     "https://github.com/pqwy/tpf"
 dev-repo:     "git+https://github.com/pqwy/tpf.git"
 bug-reports:  "https://github.com/pqwy/tpf/issues"
 doc:          "http://pqwy.github.io/tpf/doc"
-author:       "David Kaloper <dk505@cam.ac.uk>"
-maintainer:   "David Kaloper <dk505@cam.ac.uk>"
+author:       "David Kaloper Meršinjak <dk505@cam.ac.uk>"
+maintainer:   "David Kaloper Meršinjak <dk505@cam.ac.uk>"
 license:      "ISC"
-synopsis:     "Simple and idiomatic generic programming"
+synopsis:     "A minimalist library for datatype-generic programming"
 description:
-"Tagless/Trivial polytypic functions (TPF) is a minimal library facilitating
-generic programming (in the sense of polytypism). TPF is simple, idiomatic,
-decently efficient and has no dependencies."
+"Tagless/trivial polytypic functions (Tpf) is a minimalist library for
+datatype-generic (or polytypic) programming.
 
-build: [ [ "dune" "subst" ] {pinned}
-         [ "dune" "build" "-p" name "-j" jobs ] ]
+It allows writing generic functions that seamlessly interoperate with the rest
+of the OCaml ecosystem and exhibit good performance. This approach roughly plays
+in the same space as most PPX derivers, but with different trade-offs.
+
+Tpf arises as a principled scrap-your-overloading take on the spine-view take on
+the scrap-your-boilerplate take on datatype-genericity. Contrary to other
+similar approaches, it embraces parametricity, which gives it an idiomatic OCaml
+flavor. This also gives it the name.
+
+Tpf has no dependencies and is distributed under the ISC license."
+
+build: [[ "dune" "subst" ] {pinned}
+        [ "dune" "build" "-p" name "-j" jobs ]]
 depends: [
   "ocaml" {>= "4.05.0"}
   "dune" {build & >= "1.8"}
