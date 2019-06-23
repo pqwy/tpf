@@ -4,33 +4,37 @@ open Sexplib
 let pf = Format.fprintf
 let failwith fmt = Format.kasprintf failwith fmt
 
-type 'a e = 'a -> Sexp.t
+module Sexp_to = struct
 
-module Enc = struct
+  type 'a e = 'a -> Sexp.t
+  module G = Generic (struct type 'a q = 'a e end)
 
-  include Generic (struct type 'a r = 'a e end)
-
+  open G
   open V
   open Sexplib.Sexp
 
   let field m i x = List [Atom (field m i); x]
 
-  let rec g_to_sexp: 'a. ('a, _) view -> 'a e = fun v x ->
+  let rec gfun: 'a. ('a, _) view -> 'a e = fun v x ->
     let rec variant: 'a. _ -> _ -> ('a, _, _) spine -> _ = fun v0 acc -> function
     | K _ -> acc
     | A (s, a, f) -> variant v0 (!f a :: acc) s
-    | R (s, a) -> variant v0 (g_to_sexp v0 a :: acc) s in
+    | R (s, a) -> variant v0 (gfun v0 a :: acc) s in
     let rec record: 'a. _ -> _ -> _ -> _ -> ('a, _, _) spine -> _ =
       fun v0 acc m i -> function
     | K _ -> acc
     | A (s, a, f) -> record v0 (field m i (!f a) :: acc) m (i - i) s
-    | R (s, a) -> record v0 (field m i (g_to_sexp v0 a) :: acc) m (i - 1) s in
+    | R (s, a) -> record v0 (field m i (gfun v0 a) :: acc) m (i - 1) s in
     let m = meta v x in
     match spine v x, fields m, name m with
     | K _, _, name -> Atom name
     | s  , 0, name -> List (Atom name :: variant v [] s)
     | s  , _, ""   -> List (record v [] m (fields m - 1) s)
     | s  , _, name -> List (Atom name :: record v [] m (fields m - 1) s)
+
+  type p = G.p
+  let (!:) = (!:)
+  include View (struct type 'a r = 'a e let gfun = gfun end)
 end
 
 module Smap = Map.Make (struct
@@ -38,12 +42,12 @@ module Smap = Map.Make (struct
   let compare (a: string) b = compare a b
 end)
 
-type 'a d = Sexp.t -> 'a
+module Sexp_of = struct
 
-module Dec = struct
+  type 'a d = Sexp.t -> 'a
+  module G = Generic (struct type 'a q = 'a d end)
 
-  include Generic (struct type 'a r = 'a d end)
-
+  open G
   open S
   open Sexplib.Sexp
 
@@ -127,7 +131,7 @@ module Dec = struct
       if Smap.cardinal map <= fields m then extract map
       else err_extra_fields m map
 
-  let g_of_sexp = function
+  let gfun = function
   | [s, m] when name m = "" ->
       let rec goto10 sexp =
         try match sexp with
@@ -153,26 +157,8 @@ module Dec = struct
         with | Failure _ as exn -> of_sexp_error exn sexp
              | Not_found -> err_tag sexp in
       goto10
+
+  type p = G.p
+  let (!:) = (!:)
+  include Schema (struct type 'a r = 'a d let gfun = gfun end)
 end
-
-let g_to_sexp0 g = Enc.(v0 g_to_sexp g)
-let g_to_sexp1 g = Enc.(v1 g_to_sexp g)
-let g_to_sexp2 g = Enc.(v2 g_to_sexp g)
-let g_to_sexp3 g = Enc.(v3 g_to_sexp g)
-let g_to_sexp4 g = Enc.(v4 g_to_sexp g)
-let g_to_sexp5 g = Enc.(v5 g_to_sexp g)
-let g_to_sexp6 g = Enc.(v6 g_to_sexp g)
-let g_to_sexp7 g = Enc.(v7 g_to_sexp g)
-let g_to_sexp8 g = Enc.(v8 g_to_sexp g)
-let g_to_sexp9 g = Enc.(v9 g_to_sexp g)
-
-let g_of_sexp0 g = Dec.(s0 g_of_sexp g)
-let g_of_sexp1 g = Dec.(s1 g_of_sexp g)
-let g_of_sexp2 g = Dec.(s2 g_of_sexp g)
-let g_of_sexp3 g = Dec.(s3 g_of_sexp g)
-let g_of_sexp4 g = Dec.(s4 g_of_sexp g)
-let g_of_sexp5 g = Dec.(s5 g_of_sexp g)
-let g_of_sexp6 g = Dec.(s6 g_of_sexp g)
-let g_of_sexp7 g = Dec.(s7 g_of_sexp g)
-let g_of_sexp8 g = Dec.(s8 g_of_sexp g)
-let g_of_sexp9 g = Dec.(s9 g_of_sexp g)
