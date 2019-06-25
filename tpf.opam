@@ -8,17 +8,18 @@ maintainer:   "David Kaloper Meršinjak <dk505@cam.ac.uk>"
 license:      "ISC"
 synopsis:     "A minimalist library for datatype-generic programming"
 description:
-"Tagless/trivial polytypic functions (Tpf) is a minimalist library for
-datatype-generic (or polytypic) programming.
+"Tagless/trivial polytypic functions (Tpf) provides support for datatype-generic
+(polytypic) programming. It is designed to be minimal, usable, and idiomatic.
 
-It allows writing generic functions that seamlessly interoperate with the rest
-of the OCaml ecosystem and exhibit good performance. This approach roughly plays
-in the same space as most PPX derivers, but with different trade-offs.
+Tpf allows defining functions, that operate over a wide range of unrelated data
+types, entirely within the language, without breaking out into the meta-level.
+It requires only the base language, contains essentially no runtime, and
+seamlessly interoperates with the rest of OCaml.
 
-Tpf arises as a principled scrap-your-overloading take on the spine-view take on
-the scrap-your-boilerplate take on datatype-genericity. Contrary to other
-similar approaches, it embraces parametricity, which gives it an idiomatic OCaml
-flavor. This also gives it the name.
+Tpf shares the data model with SYB, and the manifest representations with
+GHC.Generics. It arises as a principled removal of overloading from these, and
+similar approaches. This gives Tpf an organic OCaml flavor. It also lends it the
+name.
 
 Tpf has no dependencies and is distributed under the ISC license."
 

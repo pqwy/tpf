@@ -1,17 +1,31 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
+(** [Tpf] — Tagless/Trivial polytypic functions *)
+
+(** {1:over Overview:}
+
+
+{ul
+{- {!V}, {!S} — view/schema spines}
+{- {!view}, {!schema} and {!meta}}
+{- {!data0} .. {!data9} — package up [view * schema]}
+{- {!P}, {!S} — signatures that can be include when exporting generic functions}
+{- {!Generic} —  start here when writing a generic function}
+{- metablock helpers}}
+*)
+
+(** {1:core The Core} *)
+
 type (+'a, +'f) app
 
-(** {1:core Core}
+(* A {e spine} is a typed sequence of one-step constructor applications.
+   Two types of spines, {{!V}view} and {{!S}schema}, are at the heart of
+   generic representation. *)
 
-    Two types of spines, view and schema, are at the heart of generic
-    representation. *)
+(** [V] is for {!view}.
 
-(** [V] is for [View].
-
-    An instantiated {e view spine} encodes a value and its pointwise operations
-    (or queries).
+    An instantiated {e view spine} encodes a value and its pointwise queries.
 
     The type parameters are:
     {ul
@@ -25,10 +39,10 @@ module V : sig
   | R : ('r -> 'b, 'r, 'q) spine * 'r -> ('b, 'r, 'q) spine
 end
 
-(** [S] is for [Schema].
+(** [S] is for {!schema}.
 
     An instantiated {e schema spine} encodes a type constructor and its
-    pointwise operations (or queries).
+    pointwise queries.
 
     The type parameters are:
     {ul
@@ -43,184 +57,173 @@ module S : sig
 end
 
 type meta = { name : string; index : int; fields : string array }
-(** Meta blocks collect extra information about a constructor (or variant).
+(** Meta blocks collect extra information about a constructor.
 
     Constraints:
 
     {ul
-    {- Identity is meaningful. If [m1] and [m2] represent constructors of the
-       same type, and [m1 = m2], then [m1 == m2] must hold. }
-    {- Indices of meta blocks are a form of constructor identity and must be
-       distinct within a type.}
-    {- If the constructor is plain record, its [name] must be [""]. }
-    {- If the constructor is a variant, its [fields] must be [[||]]. If it is a
-       plain or an inline record, the number fields must match the number of
-       layers in the spine.}}
+    {- {{!index}Indices} of meta blocks are constructor identity and
+       must be distinct within a type.}
+    {- Plain records must have {!name} [""].}
+    {- Variants must have no {!fields}.}}
 
     These constrains may be relied upon by generic functions. *)
 
 type ('a, +'q) view = ('a -> ('a, 'a, 'q) V.spine) * ('a -> meta)
-(** [view] is the generic representation for consumer functions.
-    It allows {e viewing} a value as a {{V.spine}spine}, and/or as a meta block.
+(** Generic representation for consumer functions.
+    It can {e view} a value as a {!V.spine} or {!meta}.
 
-
-    [view] is equivalent to [gfoldl] from {e SYB}. *)
+    [view] is equivalent to [gfoldl] in {e SYB}. *)
 
 type ('a, +'q) schema = (('a, 'a, 'q) S.spine * meta) list
-(** [schema] is the generic representation for producer functions.
+(** Generic representation for producer functions.
     It encodes the set of constructors of a type.
 
 
-    [schema] is equivalent to [gunfold] from {e SYB}. *)
-
-(** {1:help Helper functions} *)
-
-(** [spine] and [meta] are [fst] and [snd], named suggestively. *)
+    [schema] is equivalent to [gunfold] in {e SYB}. *)
 
 val spine : 'a * 'b -> 'a
+(** [spine] is [fst]. Spine is always first. *)
+
 val meta : 'a * 'b -> 'b
-
-val variant : ?fields:string array -> string -> int -> meta
-(** [variant ~fields name index] is a {{!meta}meta block} for the constructor
-    named [name], with index [index] within its type.
-
-    If [fields] are provided, the constructor is an inline record. *)
-
-val record : string array -> meta
-(** [record fields] is a {{!meta}meta block} for a plain record. *)
-
-val pp_meta : Format.formatter -> meta -> unit
-(** [pp_meta] pretty-prints a meta block in a human-readable way. *)
-
-val name : meta -> string
-(** [name meta] is the name of this meta block. *)
-
-val fields : meta -> int
-(** [fields meta] is the number of fields of this meta block. *)
-
-val field : meta -> int -> string
-(** [field meta i] is the [i]-th field of this meta block.
-
-    @raise Invalid_argument when [meta] does not contain [i]-th field. *)
-
-val has_field : meta -> string -> bool
-(** Checks if the meta block has the named field. *)
+(** [meta] is [snd]. Meta block is always second. *)
 
 (** {1:data Data} *)
 
-(** [(..., 'q, 'res) needs[n]] is an [n]-ary function from [(_, 'q) app]
-    to ['res]. *)
+(** [(..., 'q, 'res) app[n]] is just an alias for an [n]-ary function
+    from [(_, 'q) app] to ['res]. *)
 
-type ('q, 'res) needs0 = 'res
-type ('a, 'q, 'res) needs1 =
-  ('a, 'q) app -> ('q, 'res) needs0
-type ('a, 'b, 'q, 'res) needs2 =
-  ('a, 'q) app -> ('b, 'q, 'res) needs1
-type ('a, 'b, 'c, 'q, 'res) needs3 =
-  ('a, 'q) app -> ('b, 'c, 'q, 'res) needs2
-type ('a, 'b, 'c, 'd, 'q, 'res) needs4 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'q, 'res) needs3
-type ('a, 'b, 'c, 'd, 'e, 'q, 'res) needs5 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'q, 'res) needs4
-type ('a, 'b, 'c, 'd, 'e, 'f, 'q, 'res) needs6 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'q, 'res) needs5
-type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, 'res) needs7 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'q, 'res) needs6
-type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, 'res) needs8 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, 'res) needs7
-type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) needs9 =
-  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) needs8
+type ('q, 'res) app0 = 'res
+type ('a, 'q, 'res) app1 =
+  ('a, 'q) app -> ('q, 'res) app0
+type ('a, 'b, 'q, 'res) app2 =
+  ('a, 'q) app -> ('b, 'q, 'res) app1
+type ('a, 'b, 'c, 'q, 'res) app3 =
+  ('a, 'q) app -> ('b, 'c, 'q, 'res) app2
+type ('a, 'b, 'c, 'd, 'q, 'res) app4 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'q, 'res) app3
+type ('a, 'b, 'c, 'd, 'e, 'q, 'res) app5 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'q, 'res) app4
+type ('a, 'b, 'c, 'd, 'e, 'f, 'q, 'res) app6 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'q, 'res) app5
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, 'res) app7 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'q, 'res) app6
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, 'res) app8 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, 'res) app7
+type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) app9 =
+  ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) app8
 
-(** [data[n]] packages up the {!view] and {!schema} for a single type which
-    contains [n] other types. It is equivalent to [Data] in {e SYB}.
+(** [data] packages up the {!view} and {!schema} for a single type which
+    contains [n] other types. This is the easiest generic representation to
+    handle, but it is not necessary.
 
-    This is the easiest {e generic representation} to handle, but it is not
-    necessary.
+    Generically representable types should export their [data] value.
 
-    Types supporting a generic representation are expected to export [data[n]]
-    values.
+    Generic functions should export a [data]-based interface, together with a
+    naked function that operates directly on a {!view} or {!schema}.
 
-    Generic functions are expected to export an interface for [data[n]],
-    together with a naked function that operates directly on a {!view} or
-    {!schema}. *)
+    [data] is equivalent to [Data] in {e SYB}. *)
 
 type 'x data0 =
   { view   : 'q. ('x, 'q) view
   ; schema : 'q. ('x, 'q) schema }
 type ('a, 'x) data1 =
-  { view   : 'q. ('a, 'q, ('x, 'q) view) needs1
-  ; schema : 'q. ('a, 'q, ('x, 'q) schema) needs1 }
+  { view   : 'q. ('a, 'q, ('x, 'q) view) app1
+  ; schema : 'q. ('a, 'q, ('x, 'q) schema) app1 }
 type ('a, 'b, 'x) data2 =
-  { view   : 'q. ('a, 'b, 'q, ('x, 'q) view) needs2
-  ; schema : 'q. ('a, 'b, 'q, ('x, 'q) schema) needs2 }
+  { view   : 'q. ('a, 'b, 'q, ('x, 'q) view) app2
+  ; schema : 'q. ('a, 'b, 'q, ('x, 'q) schema) app2 }
 type ('a, 'b, 'c, 'x) data3 =
-  { view   : 'q. ('a, 'b, 'c, 'q, ('x, 'q) view) needs3
-  ; schema : 'q. ('a, 'b, 'c, 'q, ('x, 'q) schema) needs3 }
+  { view   : 'q. ('a, 'b, 'c, 'q, ('x, 'q) view) app3
+  ; schema : 'q. ('a, 'b, 'c, 'q, ('x, 'q) schema) app3 }
 type ('a, 'b, 'c, 'd, 'x) data4 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'q, ('x, 'q) view) needs4
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'q, ('x, 'q) schema) needs4 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'q, ('x, 'q) view) app4
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'q, ('x, 'q) schema) app4 }
 type ('a, 'b, 'c, 'd, 'e, 'x) data5 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'q, ('x, 'q) view) needs5
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'q, ('x, 'q) schema) needs5 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'q, ('x, 'q) view) app5
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'q, ('x, 'q) schema) app5 }
 type ('a, 'b, 'c, 'd, 'e, 'f, 'x) data6 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'q, ('x, 'q) view) needs6
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'q, ('x, 'q) schema) needs6 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'q, ('x, 'q) view) app6
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'q, ('x, 'q) schema) app6 }
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'x) data7 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, ('x, 'q) view) needs7
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, ('x, 'q) schema) needs7 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, ('x, 'q) view) app7
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'q, ('x, 'q) schema) app7 }
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) data8 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, ('x, 'q) view) needs8
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, ('x, 'q) schema) needs8 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, ('x, 'q) view) app8
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, ('x, 'q) schema) app8 }
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) data9 =
-  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) view) needs9
-  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) schema) needs9 }
+  { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) view) app9
+  ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) schema) app9 }
 
-(** Signature for a bundle of generic functions. *)
-module type S = sig
+(** {1:exports Export signatures} *)
+
+(** Packages up the basic operations from a {!Generic} instance. *)
+module type P = sig
+  type p
+  type 'a q
+  val (!) : 'a q -> ('a, p) app
+end
+
+(** Packages up {{!data0}[data]}-based entry points to a generic function.
+
+    [q] is the {e query} that we need at each type that we encounter.
+
+    [r] is the function's result.
+
+    [q] and [r] are not constrained to be the same, but they often are. *)
+module type Data = sig
 
   type 'a q
-  (** Generic function's query type. *)
+  (** What we need at each type. *)
 
   type 'a r
-  (** Generic function's result type.
-
-      {b Note.} [q] and [r] are not constrained to be the same, even if they
-      often are. *)
+  (** What we provide, in return. *)
 
   (** The functions [data[n]] are variants of the same generic function,
-      operating on the corresponding generic representation types. *)
+      operating on the corresponding [data] types. *)
 
-  val data0 : 'x data0 -> 'x r
-  val data1 : ('a, 'x) data1 -> 'a q -> 'x r
-  val data2 : ('a, 'b, 'x) data2 -> 'a q -> 'b q -> 'x r
-  val data3 : ('a, 'b, 'c, 'x) data3 -> 'a q -> 'b q -> 'c q -> 'x r
-  val data4 : ('a, 'b, 'c, 'd, 'x) data4 -> 'a q -> 'b q -> 'c q -> 'd q -> 'x r
-  val data5 : ('a, 'b, 'c, 'd, 'e, 'x) data5 -> 'a q -> 'b q -> 'c q -> 'd q ->
-              'e q -> 'x r
-  val data6 : ('a, 'b, 'c, 'd, 'e, 'f, 'x) data6 -> 'a q -> 'b q -> 'c q ->
-              'd q -> 'e q -> 'f q -> 'x r
-  val data7 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'x) data7 -> 'a q -> 'b q -> 'c q ->
-              'd q -> 'e q -> 'f q -> 'g q -> 'x r
-  val data8 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) data8 -> 'a q -> 'b q ->
-              'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'x r
-  val data9 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) data9 -> 'a q -> 'b q ->
-              'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'x r
+  val data0 : 'x data0 ->
+              'x r
+  val data1 : ('a, 'x) data1 ->
+              'a q -> 'x r
+  val data2 : ('a, 'b, 'x) data2 ->
+              'a q -> 'b q -> 'x r
+  val data3 : ('a, 'b, 'c, 'x) data3 ->
+              'a q -> 'b q -> 'c q -> 'x r
+  val data4 : ('a, 'b, 'c, 'd, 'x) data4 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'x r
+  val data5 : ('a, 'b, 'c, 'd, 'e, 'x) data5 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'x r
+  val data6 : ('a, 'b, 'c, 'd, 'e, 'f, 'x) data6 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'x r
+  val data7 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'x) data7 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'x r
+  val data8 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'x) data8 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q ->
+              'x r
+  val data9 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) data9 ->
+              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q ->
+              'i q -> 'x r
 end
+
+(** {1 Writing generic functions} *)
 
 (** Interface between the outside world and a [spine].
 
-    There are only three critical symbols needed by users and/or implementors of
-    generic functions:
+    It contains only three necessary symbols:
 
     {ul
-    {- Users need [p] and [:!], to inject from ['a Q.q] to [('a, p) app].}
-    {- Implementors need [p] and [!], to project from [('a, p) app] to
-       ['a Q.q]. The rest of this module is provided for the implementor's
-       convenience.}}
+    {- {e users} need [p] and [!], to inject from ['a Q.q] to [('a, p) app];
+       while}
+    {- {e implementors} need [p] and [!:], to project from [('a, p) app] to
+       ['a Q.q].}}
 
-    Minimal complete interface to a generic function consists of [p], [:!], and
-    either a function of type {[val f: ('a, p) view -> ... -> 'a -> ...]}
-    or {[val g: ('a, p) schema -> ...]}.
+    The rest of this module is provided for the implementor's convenience.
+
+    Minimal complete interface to a generic function consists of [p], [!], and
+    a function that looks like one of
+{[val f: ('a, p) view -> ... -> 'a -> ...
+val g: ('a, p) schema -> ...]}
 
     A more complete interface adds a family of functions like
 
@@ -230,64 +233,127 @@ val f2 : ('a, 'b, 'x) data2 -> 'a Q.q -> 'b Q.q -> ...
 ...
 ]}
 
-    There are two exporting strategies:
+    These can be
 
     {ul
-    {- Use the {!View} or {!Schema} functors, which have a pre-canned module
-       type, and accept the function naming; or}
-    {- Manually construct these entry points, perhaps by using the functions
-       [data[n]] provided below, and spell out their types in the signature.}}
+    {- produced with the {!View} and {!Schema} functors, which have pre-canned
+       module types, but fixed names; or}
+    {- constructed manually, perhaps by using the functions {{!data0}[data[n]]},
+       with their signature spelled out by hand.}}
 *)
 module Generic (Q: sig type 'a q end) : sig
 
   type 'a q = 'a Q.q
+  (** Query type for this (group of) function(s). It gives the action to be done
+      for each constructor argument. *)
 
   type p
   (** Proxy representing [Q.q].
 
-      [p]s exist only to round-trip ['a Q.q] through [spine].
+      [p]s exists only to embed ['a Q.q] in a [spine].
 
       The only possible operations involving [p] are the two below. *)
 
-  external (!:) : 'a q -> ('a, p) app = "%identity"
-  (** [!:x] injects into the proxy. *)
+  external (!) : 'a q -> ('a, p) app = "%identity"
+  (** [!x] injects into the proxy. *)
 
-  external (!) : ('a, p) app -> 'a q = "%identity"
-  (** [!x] projects from the proxy. *)
+  external (!:) : ('a, p) app -> 'a q = "%identity"
+  (** [!:x] projects from the proxy. *)
 
-  val data0 : ('g -> 'r) -> (p, 'g) needs0 ->
-              'r
-  val data1 : ('g -> 'r) -> ('a, p, 'g) needs1 ->
-              'a q -> 'r
-  val data2 : ('g -> 'r) -> ('a, 'b, p, 'g) needs2 ->
-              'a q -> 'b q -> 'r
-  val data3 : ('g -> 'r) -> ('a, 'b, 'c, p, 'g) needs3 ->
-              'a q -> 'b q -> 'c q -> 'r
-  val data4 : ('g -> 'r) -> ('a, 'b, 'c, 'd, p, 'g) needs4 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'r
-  val data5 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, p, 'g) needs5 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'r
-  val data6 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, p, 'g) needs6 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'r
-  val data7 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, p, 'g) needs7 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'r
-  val data8 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, p, 'g) needs8 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'r
-  val data9 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, p, 'g) needs9 ->
-              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'r
+  module P: P with type p = p and type 'a q := 'a Q.q
+  (** Groups {!p} and {!(!)}, above, for easy export. *)
 
-  (** Functors for uniformly exporting [data[n]] interface.
+  (** Functors generating a [data[n]] interface.
 
-      {b Note.} They {e do not include} types [q] and [r] from {!S}; to describe
-      their output with [S] in a signature, you must eliminate these types. *)
+      {b Note.} They {e do not include} types [q] and [r] from {!Data}; when
+      describing their output type in signatures using {!Data}, you must eliminate
+      [q] and [r]. *)
 
+  (** [View] equips a generic consumer [gfun] with the
+      {{!Tpf.data0}[data[n]]} interface, for easy export. *)
   module View (F: sig
     type 'a r
     val gfun: ('a, p) view -> 'a r
-  end) : S with type 'a q := 'a Q.q and type 'a r := 'a F.r
+  end) : Data with type 'a q := 'a Q.q and type 'a r := 'a F.r
 
+  (** [Schema] equips a generic producer [gfun] the the
+      {{!Tpf.data0}[data[n]]} interface, for easy export. *)
   module Schema (F: sig
     type 'a r
     val gfun: ('a, p) schema -> 'a r
-  end) : S with type 'a q := 'a Q.q and type 'a r := 'a F.r
+  end) : Data with type 'a q := 'a Q.q and type 'a r := 'a F.r
+
+  (** Helpers for manually exporting generic functions.
+
+      [app[n] k f] converts [f: ('a, p) app -> ...] into {{!q}['a q -> ...]} and
+      applies [k] to it.
+
+      For instance, {!View} is given by
+{[let data0 (d: _ data0) = app0 gfun d.view
+let data1 (d: _ data1) = app1 gfun d.view
+...
+}]
+
+*)
+
+  val app0 : ('g -> 'r) -> (p, 'g) app0 ->
+             'r
+  val app1 : ('g -> 'r) -> ('a, p, 'g) app1 ->
+             'a q -> 'r
+  val app2 : ('g -> 'r) -> ('a, 'b, p, 'g) app2 ->
+             'a q -> 'b q -> 'r
+  val app3 : ('g -> 'r) -> ('a, 'b, 'c, p, 'g) app3 ->
+             'a q -> 'b q -> 'c q -> 'r
+  val app4 : ('g -> 'r) -> ('a, 'b, 'c, 'd, p, 'g) app4 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'r
+  val app5 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, p, 'g) app5 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'r
+  val app6 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, p, 'g) app6 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'r
+  val app7 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, p, 'g) app7 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'r
+  val app8 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, p, 'g) app8 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'r
+  val app9 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, p, 'g) app9 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'r
 end
+
+val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
+(** [fix f x] is [f (fix f) x], the usual fixpoint.
+
+    This one shares, in that it only causes [f _] to be evaluated once.
+    [fix] likes functions of the form [fun self -> ... (fun x -> ...)].
+
+    Sharing is caring. *)
+
+(** {1:metaf Dealing with [meta]} *)
+
+val variant : ?fields:string array -> string -> int -> meta
+(** [variant ~fields name index] creates a {{!meta}meta block} for the
+    constructor named [name], with index [index] within its type.
+
+    If [fields] are provided, the constructor is an inline record. *)
+
+val record : string array -> meta
+(** [record fields] creates a {{!meta}meta block} for a plain record. *)
+
+val name : meta -> string
+(** [name meta] is the name of [meta]. *)
+
+val index : meta -> int
+(** [index meta] the index of [meta]. *)
+
+val fields : meta -> int
+(** [fields meta] is the number of fields in [meta]. *)
+
+val field : meta -> int -> string
+(** [field meta i] is the [i]-th field in [meta].
+
+    @raise Invalid_argument when [meta] does not contain [i]-th field. *)
+
+val has_field : meta -> string -> bool
+(** Checks if the meta block has the named field. *)
+
+val pp_meta : Format.formatter -> meta -> unit
+(** [pp_meta] pretty-prints a meta block in a human-readable way. *)
+
