@@ -1,30 +1,43 @@
+(* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
+   See LICENSE.md. *)
+
 open Tpf
-open Sexplib
 
 let pf = Format.fprintf
 let failwith fmt = Format.kasprintf failwith fmt
 
-module Sexp_to = struct
+let sexp: _ data2 =
+  let open Sexplib0.Sexp in
+  let atom x = Atom x and list xs = List xs in
+  let m0 = variant "Atom" 0
+  and m1 = variant "List" 1
+  and k0 = V.K atom and k1 = V.K list in
+  { view = (fun s sx ->
+      V.(function Atom a -> A (k0, a, s) | List xs -> A (k1, xs, sx)),
+      (function Atom _ -> m0 | List _ -> m1))
+  ; schema = S.(fun s sx -> [A (K atom, s), m0; A (K list, sx), m1]) }
 
-  type 'a e = 'a -> Sexp.t
+module To = struct
+
+  type 'a e = 'a -> Sexplib0.Sexp.t
   module G = Generic (struct type 'a q = 'a e end)
 
   open G
   open V
-  open Sexplib.Sexp
+  open Sexplib0.Sexp
 
   let field m i x = List [Atom (field m i); x]
 
-  let rec gfun: 'a. ('a, _) view -> 'a e = fun v x ->
+  let rec g_to_sexp: 'a. ('a, _) view -> 'a e = fun v x ->
     let rec variant: 'a. _ -> _ -> ('a, _, _) spine -> _ = fun v0 acc -> function
     | K _ -> acc
-    | A (s, a, f) -> variant v0 (!f a :: acc) s
-    | R (s, a) -> variant v0 (gfun v0 a :: acc) s in
+    | A (s, a, f) -> variant v0 (!:f a :: acc) s
+    | R (s, a) -> variant v0 (g_to_sexp v0 a :: acc) s in
     let rec record: 'a. _ -> _ -> _ -> _ -> ('a, _, _) spine -> _ =
       fun v0 acc m i -> function
     | K _ -> acc
-    | A (s, a, f) -> record v0 (field m i (!f a) :: acc) m (i - i) s
-    | R (s, a) -> record v0 (field m i (gfun v0 a) :: acc) m (i - 1) s in
+    | A (s, a, f) -> record v0 (field m i (!:f a) :: acc) m (i - i) s
+    | R (s, a) -> record v0 (field m i (g_to_sexp v0 a) :: acc) m (i - 1) s in
     let m = meta v x in
     match spine v x, fields m, name m with
     | K _, _, name -> Atom name
@@ -32,9 +45,8 @@ module Sexp_to = struct
     | s  , _, ""   -> List (record v [] m (fields m - 1) s)
     | s  , _, name -> List (Atom name :: record v [] m (fields m - 1) s)
 
-  type p = G.p
-  let (!:) = (!:)
-  include View (struct type 'a r = 'a e let gfun = gfun end)
+  include G.P
+  include G.View (struct type 'a r = 'a e let gfun = g_to_sexp end)
 end
 
 module Smap = Map.Make (struct
@@ -42,14 +54,14 @@ module Smap = Map.Make (struct
   let compare (a: string) b = compare a b
 end)
 
-module Sexp_of = struct
+module Of = struct
 
-  type 'a d = Sexp.t -> 'a
+  type 'a d = Sexplib0.Sexp.t -> 'a
   module G = Generic (struct type 'a q = 'a d end)
 
   open G
   open S
-  open Sexplib.Sexp
+  open Sexplib0.Sexp
 
   let err_tagged_form () = failwith "expecting atom or list with a head atom"
   let err_arity () = failwith "variant arity mismatch"
@@ -62,9 +74,8 @@ module Sexp_of = struct
     failwith "extra fields:%a" pp map
   let of_sexp_error exn sexp = match exn with
   | Failure err ->
-      raise (Sexplib.Conv.Of_sexp_error
-              (Failure ("Tpf_sexplib.g_of_sexp: " ^ err), sexp))
-  | _ -> raise (Sexplib.Conv.Of_sexp_error (exn, sexp))
+      raise (Of_sexp_error (Failure ("Tpf_sexplib.g_of_sexp: " ^ err), sexp))
+  | _ -> raise (Of_sexp_error (exn, sexp))
   let err_tag sexp = of_sexp_error (Failure "unexpected variant") sexp
   let err_record_component =
     of_sexp_error (Failure "bad record element: expecting (<name> <value>)")
@@ -78,15 +89,15 @@ module Sexp_of = struct
     | K v -> fun xs -> k v xs
     | A (A (A (s, a), b), c) ->
         go s (fun f -> function
-          | x0::x1::x2::xs -> k (f (!a x0) (!b x1) (!c x2)) xs
+          | x0::x1::x2::xs -> k (f (!:a x0) (!:b x1) (!:c x2)) xs
           | _ -> err_arity ())
     | A (A (s, a), b) ->
         go s (fun f -> function
-          | x0::x1::xs -> k (f (!a x0) (!b x1)) xs
+          | x0::x1::xs -> k (f (!:a x0) (!:b x1)) xs
           | _ -> err_arity ())
     | A (s, a) ->
         go s (fun f -> function
-          | x::xs -> k (f (!a x)) xs
+          | x::xs -> k (f (!:a x)) xs
           | _ -> err_arity ())
     | R s ->
         go s (fun f -> function
@@ -113,16 +124,16 @@ module Sexp_of = struct
     | K f -> fun map -> k f map
     | A (A (A (s, a), b), c) ->
         go s (i - 3) (fun f map ->
-          k (f (!a (get_field m (i - 2) map))
-               (!b (get_field m (i - 1) map))
-               (!c (get_field m i map)))
+          k (f (!:a (get_field m (i - 2) map))
+               (!:b (get_field m (i - 1) map))
+               (!:c (get_field m i map)))
             map)
     | A (A (s, a), b) ->
         go s (i - 2) (fun f map ->
-          k (f (!a (get_field m (i - 1) map))
-               (!b (get_field m i map)))
+          k (f (!:a (get_field m (i - 1) map))
+               (!:b (get_field m i map)))
             map)
-    | A (s, a) -> go s (i - 1) (fun f map -> k (f (!a (get_field m i map))) map)
+    | A (s, a) -> go s (i - 1) (fun f map -> k (f (!:a (get_field m i map))) map)
     | R s -> go s (i - 1) (fun f map -> k (f (goto10 (get_field m i map))) map)
     in
     let extract = go s (fields m - 1) (fun x _ -> x) in
@@ -131,7 +142,7 @@ module Sexp_of = struct
       if Smap.cardinal map <= fields m then extract map
       else err_extra_fields m map
 
-  let gfun = function
+  let g_of_sexp = function
   | [s, m] when name m = "" ->
       let rec goto10 sexp =
         try match sexp with
@@ -158,7 +169,6 @@ module Sexp_of = struct
              | Not_found -> err_tag sexp in
       goto10
 
-  type p = G.p
-  let (!:) = (!:)
-  include Schema (struct type 'a r = 'a d let gfun = gfun end)
+  include G.P
+  include Schema (struct type 'a r = 'a d let gfun = g_of_sexp end)
 end

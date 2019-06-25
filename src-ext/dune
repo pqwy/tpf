@@ -1,5 +1,5 @@
 (library
-  (public_name tpf.fmt)
+  (public_name tpf-ext.fmt)
   (name tpf_fmt)
   (synopsis "Generic pretty-printers")
   (wrapped false)
@@ -8,19 +8,28 @@
   (libraries tpf fmt))
 
 (library
-  (public_name tpf.sexplib)
+  (public_name tpf-ext.sexplib)
   (name tpf_sexplib)
   (synopsis "Generic sexps")
   (wrapped false)
   (modules tpf_sexplib)
   (optional)
-  (libraries tpf sexplib))
+  (libraries tpf sexplib0))
 
 (library
-  (public_name tpf.cmdliner)
+  (public_name tpf-ext.cmdliner)
   (name tpf_cmdliner)
   (synopsis "Generic command lines")
   (wrapped false)
   (modules tpf_cmdliner)
   (optional)
   (libraries tpf cmdliner))
+
+(library
+  (public_name tpf-ext.json)
+  (name tpf_json)
+  (synopsis "Generic generic json")
+  (wrapped false)
+  (modules tpf_json)
+  (optional)
+  (libraries tpf))

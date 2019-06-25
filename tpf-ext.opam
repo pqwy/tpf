@@ -1,0 +1,31 @@
+opam-version: "2.0"
+homepage:     "https://github.com/pqwy/tpf"
+dev-repo:     "git+https://github.com/pqwy/tpf.git"
+bug-reports:  "https://github.com/pqwy/tpf/issues"
+doc:          "http://pqwy.github.io/tpf/doc"
+author:       "David Kaloper Meršinjak <dk505@cam.ac.uk>"
+maintainer:   "David Kaloper Meršinjak <dk505@cam.ac.uk>"
+license:      "ISC"
+synopsis:     "Generics for several popular libraries"
+description:
+"The missing generic support for several libraries that could use it.
+
+Contains several conditionally compiled sub-libs:
+
+  - tpf-extra.fmt
+  - tpf-extra.cmdliner
+  - tpf-extra.sexplib
+"
+
+build: [[ "dune" "subst" ] {pinned}
+        [ "dune" "build" "-p" name "-j" jobs ]]
+depopts: [
+  "fmt" {>= "0.8"}
+  "cmdliner" {>= "1.0.0"}
+  "sexplib0" {>= "v0.12.0"}
+]
+depends: [
+  "ocaml" {>= "4.05.0"}
+  "dune" {build & >= "1.8"}
+  "tpf"
+]

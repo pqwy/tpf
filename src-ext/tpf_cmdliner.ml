@@ -1,3 +1,6 @@
+(* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
+   See LICENSE.md. *)
+
 open Tpf
 open Cmdliner
 
@@ -11,29 +14,27 @@ let err_not_singleton () =
 
 module G = Generic (struct type 'a q = 'a Arg.conv end)
 open G
-
-type p = G.p
-let (!:) = (!:)
+include G.P
 
 module Opt = struct
   open S
-  let gfun = function
+  let g = function
   | [s, m] ->
       let rec term: 'a. _ -> ('a, _, _) spine -> 'a Term.t = fun i -> function
       | K f -> Term.const f
       | R _ -> err_recursive ()
       | A (s, a) ->
           let nfo = Arg.info [field m i] in
-          let arg = Arg.(required @@ opt (some !a) None nfo) in
+          let arg = Arg.(required @@ opt (some !:a) None nfo) in
           Term.(term (i - 1) s $ arg) in
       term (fields m - 1) s
   | _ -> err_not_singleton ()
-  include Schema (struct type 'a r = 'a Term.t let gfun = gfun end)
+  include Schema (struct type 'a r = 'a Term.t let gfun = g end)
 end
 
 module Opt_def = struct
   open V
-  let gfun v x =
+  let g v x =
     let m = meta v x in
     match fields m with
     | 0 -> err_no_fields m
@@ -43,14 +44,14 @@ module Opt_def = struct
         | R _ -> err_recursive ()
         | A (s, a, f) ->
             let nfo = Arg.info [field m i] in
-            Term.(term (i - 1) s $ Arg.(value @@ opt !f a nfo)) in
+            Term.(term (i - 1) s $ Arg.(value @@ opt !:f a nfo)) in
         term (fields m - 1) (spine v x)
-  include View (struct type 'a r = 'a -> 'a Term.t let gfun = gfun end)
+  include View (struct type 'a r = 'a -> 'a Term.t let gfun = g end)
 end
 
 module Pos = struct
   open S
-  let gfun = function
+  let g = function
   | [s, _] ->
       fun i ->
         let rec term: 'a. ('a, _, _) spine -> 'a Term.t * _ = function
@@ -58,25 +59,25 @@ module Pos = struct
         | R _ -> err_recursive ()
         | A (s, a) ->
             let t, i = term s in
-            Term.(t $ Arg.(required @@ pos i (some !a) None @@ info [])), i + 1
+            Term.(t $ Arg.(required @@ pos i (some !:a) None @@ info [])), i + 1
         in
         term s
   | _ -> err_not_singleton ()
-  include Schema (struct type 'a r = int -> 'a Term.t * int let gfun = gfun end)
+  include Schema (struct type 'a r = int -> 'a Term.t * int let gfun = g end)
 end
 
 module Pos_def = struct
   open V
-  let gfun v x i =
+  let g v x i =
     let rec term: 'a. ('a, _, _) spine -> 'a Term.t * _ = function
     | K f -> Term.const f, i
     | R _ -> err_recursive ()
     | A (s, a, f) ->
         let t, i = term s in
-        Term.(t $ Arg.(value @@ pos i !f a @@ info [])), i + 1 in
+        Term.(t $ Arg.(value @@ pos i !:f a @@ info [])), i + 1 in
     term (spine v x)
   include View (struct
     type 'a r = 'a -> int -> 'a Term.t * int
-    let gfun = gfun
+    let gfun = g
   end)
 end
