@@ -88,14 +88,17 @@ end
 
 (** {1:applicative Applicative traversals}
 
-    {{!Tpf.core}Spines} are very close to encoding a free applicative functor.
+    {{!Tpf.core}Spines} essentially encode values as expressions in the free
+    applicative functor.
 
-    Flipping this upside-down provides a way to uniformly eliminate spines with
-    a chosen applicative. This captures a slightly restricted, but still large
-    class of generic functions.
+    This API provides a way to uniformly eliminate spines by interpreting them
+    in a chosen applicative. This captures a slightly restricted, but
+    significant class of generic functions.
 
     {b Note.} You can safely ignore this if you don't feel like applicatives
     today. *)
+
+(* Note - gfuns break symmetry, but are necessary to internalize recursion :/ . *)
 
 (** {{!Tpf.view}View}-flavored applicative. *)
 module type AppV = sig
@@ -105,8 +108,8 @@ module type AppV = sig
   val gfun : meta -> 'a t -> 'a t
 end
 
-(* {{!Tpf.view}View} traversal. *)
-module AppView (A: AppV): sig
+(** {{!Tpf.view}View} traversal. *)
+module AppV (A: AppV): sig
   include P with type 'a q := 'a -> 'a A.t
   val gfun : ('a, p) view -> 'a -> 'a A.t
   include Data with type 'a q := 'a -> 'a A.t and type 'a r := 'a -> 'a A.t
@@ -122,7 +125,7 @@ module type AppS = sig
 end
 
 (** {{!Tpf.schema}Schema} traversal. *)
-module AppSchema (A: AppS) : sig
+module AppS (A: AppS) : sig
   include P with type 'a q := 'a A.t
   val gfun : ('a, p) schema -> 'a A.t
   include Data with type 'a q := 'a A.t and type 'a r := 'a A.t

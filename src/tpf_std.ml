@@ -88,7 +88,7 @@ module type AppV = sig
   val gfun: meta -> 'a t -> 'a t
 end
 
-module AppView (A: AppV) = struct
+module AppV (A: AppV) = struct
   module G = Generic (struct type 'a q = 'a -> 'a A.t end)
   open G
   open V
@@ -110,7 +110,7 @@ module type AppS = sig
   val gfun : ('a t Lazy.t * meta) list -> 'a t
 end
 
-module AppSchema (A: AppS) = struct
+module AppS (A: AppS) = struct
   module G = Generic (struct type 'a q = 'a A.t end)
   open G
   open S

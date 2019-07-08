@@ -3,7 +3,7 @@
 
 open Crowbar
 
-include Tpf_std.AppSchema (struct
+include Tpf_std.AppS (struct
   type 'a t = 'a gen
   let pure = const
   let app f a = map [f; a] (@@)

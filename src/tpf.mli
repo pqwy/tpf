@@ -6,12 +6,12 @@
 (** {1:over Overview:}
 
 {ul
-{- {!V}, {!S} — View and Schema spines}
-{- {!view}, {!schema} and {!meta}}
-{- {!data0} .. {!data9} — package up [view * schema]}
-{- {!P}, {!Data} — signatures to ease exporting generic functions}
-{- {!Generic} —  start here when writing a generic function}
-{- metablock helpers}}
+{- {!V}, {!S} — View and Schema spines.}
+{- {!view}, {!schema} and {!meta}.}
+{- {!data0} .. {!data9} — package up [view * schema].}
+{- {!P}, {!Data} — signatures to ease exporting generic functions.}
+{- {!Generic} —  start here when writing a generic function.}
+{- {{!metaf}Metablock helpers}.}}
 *)
 
 (** {1:core The Core} *)
