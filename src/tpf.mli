@@ -5,12 +5,11 @@
 
 (** {1:over Overview:}
 
-
 {ul
-{- {!V}, {!S} — view/schema spines}
+{- {!V}, {!S} — View and Schema spines}
 {- {!view}, {!schema} and {!meta}}
 {- {!data0} .. {!data9} — package up [view * schema]}
-{- {!P}, {!S} — signatures that can be include when exporting generic functions}
+{- {!P}, {!Data} — signatures to ease exporting generic functions}
 {- {!Generic} —  start here when writing a generic function}
 {- metablock helpers}}
 *)
@@ -355,4 +354,3 @@ val has_field : meta -> string -> bool
 
 val pp_meta : Format.formatter -> meta -> unit
 (** [pp_meta] pretty-prints a meta block in a human-readable way. *)
-
