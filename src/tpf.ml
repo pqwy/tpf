@@ -1,7 +1,7 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
-(* Core types. *)
+(* View types. *)
 
 type (+'a, +'f) app
 
@@ -170,10 +170,6 @@ module Generic (Q: sig type 'a q end) = struct
   end
 end
 
-let fix f =
-  let rec g = lazy (f (fun x -> Lazy.force g x)) in
-  Lazy.force g
-
 (* pp *)
 
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
@@ -193,7 +189,7 @@ let pp_meta ppf m = match m.fields with
 
 (* Metablock stuff. *)
 
-let variant ?(fields = [||]) name index = { name; index; fields }
+let variant ?(fields = [||]) index name = { name; index; fields }
 let record fields = { name = ""; index = 0; fields }
 
 let name m = m.name

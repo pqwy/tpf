@@ -1,6 +1,8 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
+(** Generic Sexplib converters. *)
+
 open Tpf
 open Sexplib0
 

@@ -157,11 +157,19 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) data9 =
 
 (** {1:exports Export signatures} *)
 
-(** Packages up the basic operations from a {!Generic} instance. *)
+(** Packages up the basic user-facing part of a {!Generic} instance.
+
+    As access to [p] and the injection are necessary to use a generic function,
+    this signature gets exported a lot. *)
 module type P = sig
-  type p
   type 'a q
+  (** Query type. *)
+
+  type p
+  (** [q] proxy. *)
+
   val (!) : 'a q -> ('a, p) app
+  (** Injection. *)
 end
 
 (** Packages up {{!data0}[data]}-based entry points to a generic function.
@@ -292,43 +300,34 @@ module Generic (Q: sig type 'a q end) : sig
 {[let data0 (d: _ data0) = app0 gfun d.view
 let data1 (d: _ data1) = app1 gfun d.view
 ...
-}]
+]}
+   *)
 
-*)
-
-  val app0 : ('g -> 'r) -> (p, 'g) app0 ->
-             'r
-  val app1 : ('g -> 'r) -> ('a, p, 'g) app1 ->
-             'a q -> 'r
-  val app2 : ('g -> 'r) -> ('a, 'b, p, 'g) app2 ->
-             'a q -> 'b q -> 'r
-  val app3 : ('g -> 'r) -> ('a, 'b, 'c, p, 'g) app3 ->
-             'a q -> 'b q -> 'c q -> 'r
-  val app4 : ('g -> 'r) -> ('a, 'b, 'c, 'd, p, 'g) app4 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'r
-  val app5 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, p, 'g) app5 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'r
-  val app6 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, p, 'g) app6 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'r
-  val app7 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, p, 'g) app7 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'r
-  val app8 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, p, 'g) app8 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'r
-  val app9 : ('g -> 'r) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, p, 'g) app9 ->
-             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'r
+  val app0 : ('cont -> 'res) -> (p, 'cont) app0 ->
+             'res
+  val app1 : ('cont -> 'res) -> ('a, p, 'cont) app1 ->
+             'a q -> 'res
+  val app2 : ('cont -> 'res) -> ('a, 'b, p, 'cont) app2 ->
+             'a q -> 'b q -> 'res
+  val app3 : ('cont -> 'res) -> ('a, 'b, 'c, p, 'cont) app3 ->
+             'a q -> 'b q -> 'c q -> 'res
+  val app4 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, p, 'cont) app4 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'res
+  val app5 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, 'e, p, 'cont) app5 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'res
+  val app6 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, 'e, 'f, p, 'cont) app6 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'res
+  val app7 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, p, 'cont) app7 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'res
+  val app8 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, p, 'cont) app8 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'res
+  val app9 : ('cont -> 'res) -> ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, p, 'cont) app9 ->
+             'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'res
 end
-
-val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
-(** [fix f x] is [f (fix f) x], the usual fixpoint.
-
-    This one shares, in that it only causes [f _] to be evaluated once.
-    [fix] likes functions of the form [fun self -> ... (fun x -> ...)].
-
-    Sharing is caring. *)
 
 (** {1:metaf Dealing with [meta]} *)
 
-val variant : ?fields:string array -> string -> int -> meta
+val variant : ?fields:string array -> int -> string -> meta
 (** [variant ~fields name index] creates a {{!meta}meta block} for the
     constructor named [name], with index [index] within its type.
 

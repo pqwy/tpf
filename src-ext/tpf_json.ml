@@ -28,11 +28,11 @@ module To = struct
     let m = meta v x in
     let rec go_v: 'a. _ -> ('a, _, _) spine -> _ = fun acc -> function
     | K _ -> acc
-    | A (s, a, f) -> go_v (!:f a :: acc) s
+    | A (s, a, af) -> go_v (!:af a :: acc) s
     | R (s, a) -> go_v (g_to_json v ~sum a::acc) s in
     let rec go_r: 'a. _ -> _ -> ('a, _, _) spine -> _ = fun i acc -> function
     | K _ -> `O acc
-    | A (s, a, f) -> go_r (i - 1) ((field m i, !:f a)::acc) s
+    | A (s, a, af) -> go_r (i - 1) ((field m i, !:af a)::acc) s
     | R (s, a) -> go_r (i - 1) ((field m i, g_to_json v ~sum a) :: acc) s in
     match spine v x, fields m, name m with
     | K _, _, name -> `String name

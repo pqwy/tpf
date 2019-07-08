@@ -9,8 +9,8 @@ let failwith fmt = Format.kasprintf failwith fmt
 let sexp: _ data2 =
   let open Sexplib0.Sexp in
   let atom x = Atom x and list xs = List xs in
-  let m0 = variant "Atom" 0
-  and m1 = variant "List" 1
+  let m0 = variant 0 "Atom"
+  and m1 = variant 0 "List"
   and k0 = V.K atom and k1 = V.K list in
   { view = (fun s sx ->
       V.(function Atom a -> A (k0, a, s) | List xs -> A (k1, xs, sx)),
@@ -121,7 +121,7 @@ module Of = struct
   let record goto10 m s =
     let rec go: 'a. ('a, _, _) spine -> _ -> ('a -> _) -> _ =
       fun s i k -> match s with
-    | K f -> fun map -> k f map
+    | K c -> fun map -> k c map
     | A (A (A (s, a), b), c) ->
         go s (i - 3) (fun f map ->
           k (f (!:a (get_field m (i - 2) map))

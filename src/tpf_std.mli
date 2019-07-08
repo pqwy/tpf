@@ -8,6 +8,14 @@
 
 open Tpf
 
+val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
+(** [fix f x] is [f (fix f) x], the usual fixpoint on functions.
+
+    This one maximizes sharing. It only causes [f _] to be evaluated once.
+    [fix] likes functions of the form [fun self -> ... (fun x -> ...)].
+
+    Sharing is caring. *)
+
 (** {1 Stdlib types}
 
     {{!data0}[data]} representations of some common types. *)
@@ -24,7 +32,7 @@ val result : ('a, 'b, ('a, 'b) result) data2
 
 (** {1 Useful generic functions} *)
 
-(** Generic equality.
+(** Equality.
 
     It behaves like the built-in one, but maintains abstraction. *)
 module Eq: sig
@@ -32,24 +40,24 @@ module Eq: sig
   type p
   type q
   val ($$) : (('a, p) app -> 'b) * (('a, q) app -> 'c) -> 'a eq -> 'b * 'c
-  val g_eq : ('a, p) view -> ('a, q) view -> 'a eq
+  val g_eq : ('a, p) view * ('a, q) view -> 'a eq
   include Data with type 'a q := 'a eq and type 'a r := 'a eq
 end
 
-(** Generic comparison.
+(** Comparison.
 
-    It behaves like the built-in one, using lexicographic ordering on the
-    constructor components, but maintains abstraction. *)
+    It behaves like the built-in one, using the lexicographic ordering on
+    constructor arguments, but maintains abstraction. *)
 module Cmp: sig
   type 'a cmp = 'a -> 'a -> int
   type p
   type q
   val ($$) : (('a, p) app -> 'b) * (('a, q) app -> 'c) -> 'a cmp -> 'b * 'c
-  val g_cmp : ('a, p) view -> ('a, q) view -> 'a cmp
+  val g_cmp : ('a, p) view * ('a, q) view -> 'a cmp
   include Data with type 'a q := 'a cmp and type 'a r := 'a cmp
 end
 
-(** Generic [iter] function. *)
+(** [iter]. *)
 module Iter: sig
   include P with type 'a q := 'a -> unit
   val g_iter : ('a, p) view -> 'a -> unit
@@ -95,10 +103,24 @@ module Fold: sig
 
 end
 
-(** Generically create random inhabitants of a type. *)
+(** Random type inhabitants. *)
 module Random: sig
-  type 'a gen = unit -> 'a
-  include P with type 'a q := 'a gen
-  val g_random : ('a, p) schema -> 'a gen
-  include Data with type 'a q := 'a gen and type 'a r := 'a gen
+  open Random
+  include P with type 'a q := State.t -> 'a
+  val g_gen : ('a, p) schema -> ?base:'a -> int -> State.t -> 'a
+  (** [g_gen schema ~base size s] generates a random inhabitant of the type
+      described by [schema] using the random state [s].
+
+      The [size] parameter limits the recursion depth. When [size < 1],
+      {ul
+      {- returns [base], if specified; or}
+      {- returns the first nullary constructor in [schema], if any; or}
+      {- raises.}}
+
+      @raise Invalid_argument if [size < 1], [base] is not specified, and there
+      are no nullary constructors in ['a]. *)
+
+  include Data
+    with type 'a q := State.t -> 'a
+    and type 'a r := ?base:'a -> int -> State.t -> 'a
 end

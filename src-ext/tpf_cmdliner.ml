@@ -21,7 +21,7 @@ module Opt = struct
   let g = function
   | [s, m] ->
       let rec term: 'a. _ -> ('a, _, _) spine -> 'a Term.t = fun i -> function
-      | K f -> Term.const f
+      | K k -> Term.const k
       | R _ -> err_recursive ()
       | A (s, a) ->
           let nfo = Arg.info [field m i] in
@@ -40,7 +40,7 @@ module Opt_def = struct
     | 0 -> err_no_fields m
     | _ ->
         let rec term: 'a. _ -> ('a, _, _) spine -> 'a Term.t = fun i -> function
-        | K f -> Term.const f
+        | K k -> Term.const k
         | R _ -> err_recursive ()
         | A (s, a, f) ->
             let nfo = Arg.info [field m i] in
@@ -55,7 +55,7 @@ module Pos = struct
   | [s, _] ->
       fun i ->
         let rec term: 'a. ('a, _, _) spine -> 'a Term.t * _ = function
-        | K f -> Term.const f, i
+        | K k -> Term.const k, i
         | R _ -> err_recursive ()
         | A (s, a) ->
             let t, i = term s in
@@ -70,7 +70,7 @@ module Pos_def = struct
   open V
   let g v x i =
     let rec term: 'a. ('a, _, _) spine -> 'a Term.t * _ = function
-    | K f -> Term.const f, i
+    | K k -> Term.const k, i
     | R _ -> err_recursive ()
     | A (s, a, f) ->
         let t, i = term s in
