@@ -8,5 +8,5 @@ tmp
 \#*#
 
 rondom
-bench*.json
+*.json
 TEXT.md
