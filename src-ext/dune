@@ -26,6 +26,24 @@
   (libraries tpf cmdliner))
 
 (library
+  (public_name tpf-ext.qcheck)
+  (name tpf_qcheck)
+  (synopsis "Generic QCheck")
+  (wrapped false)
+  (modules tpf_qcheck)
+  (optional)
+  (libraries tpf tpf-ext.fmt qcheck-core))
+
+(library
+  (public_name tpf-ext.crowbar)
+  (name tpf_crowbar)
+  (synopsis "Generic Crowbar")
+  (wrapped false)
+  (modules tpf_crowbar)
+  (optional)
+  (libraries tpf tpf-ext.fmt crowbar))
+
+(library
   (public_name tpf-ext.json)
   (name tpf_json)
   (synopsis "Generic generic json")
