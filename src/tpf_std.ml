@@ -18,16 +18,16 @@ let unit: _ data0 =
   ; schema = S.[ K (), m0 ] }
 
 let cons a b = a, b
-let m0 = variant 0 "(,)"
 let k0 = V.K cons
+let m0 = variant 0 "(,)"
 let pair: _ data2 =
   { view = (fun a b -> V.(fun (x, y) -> A (A (k0, x, a), y, b)),
            (fun _ -> m0))
   ; schema = fun a b -> S.[ A (A (K cons, a), b), m0 ] }
 
 let cons a b c = a, b, c
-let m0 = variant 0 "(,,)"
 let k0 = V.K cons
+let m0 = variant 0 "(,,)"
 let triple: _ data3 =
   { view = (fun a b c ->
       V.(fun (x, y, z) -> A (A (A (k0, x, a), y, b), z, c)),
@@ -35,16 +35,16 @@ let triple: _ data3 =
   ; schema = S.(fun a b c -> [A (A (A (K cons, a), b), c), m0]) }
 
 let cons a b c d = a, b, c, d
-let m0 = variant 0 "(,,,)"
 let k0 = V.K cons
+let m0 = variant 0 "(,,,)"
 let quadruple: _ data4 =
   { view = (fun a b c d ->
       V.(fun (x, y, z, w) -> A (A (A (A (k0, x, a), y, b), z, c), w, d)),
       (fun _ -> m0))
   ; schema = S.(fun a b c d -> [A (A (A (A (K cons, a), b), c), d), m0]) }
 
-let m0 = variant 0 "[]" and m1 = variant 1 "(::)"
 let k0 = V.K [] and k1 = V.K List.cons
+let m0 = variant 0 "[]" and m1 = variant 1 "(::)"
 let list: _ data1 =
   { view = (fun a ->
       V.(function [] -> k0 | x::xs -> R (A (k1, x, a), xs)),
@@ -52,8 +52,8 @@ let list: _ data1 =
   ; schema = S.(fun a -> [K [], m0; R (A (K List.cons, a)), m1]) }
 
 let scons x xs () = Seq.Cons (x, xs)
-let m0 = variant 0 "Nil" and m1 = variant 1 "Cons"
 let k0 = V.K Seq.empty and k1 = V.K scons
+let m0 = variant 0 "Nil" and m1 = variant 1 "Cons"
 let seq: _ data1 =
   { view = Seq.(fun a ->
       V.(fun s -> match s () with
@@ -63,22 +63,68 @@ let seq: _ data1 =
   ; schema = S.(fun a -> [K Seq.empty, m0; R (A (K scons, a)), m1]) }
 
 let some x = Some x
-let m0 = variant 0 "None" and m1 = variant 1 "Some"
 let k0 = V.K None and k1 = V.K some
+let m0 = variant 0 "None" and m1 = variant 1 "Some"
 let option: _ data1 =
   { view = (fun a -> V.(function Some x -> A (k1, x, a) | _ -> k0),
            (function None -> m0 | _ -> m1))
   ; schema = S.(fun a -> [K None, m0; A (K some, a), m1]) }
 
 let ok x = Ok x and error x = Error x
-let m0 = variant 0 "Ok" and m1 = variant 1 "Error"
 let k0 = V.K ok and k1 = V.K error
+let m0 = variant 0 "Ok" and m1 = variant 1 "Error"
 let result: _ data2 =
   { view = (fun a b ->
       V.(function Ok x -> A (k0, x, a) | Error y -> A (k1, y, b)),
       (function Ok _ -> m0 | _ -> m1))
   ; schema = S.(fun a b -> [A (K ok, a), m0; A (K error, b), m1]) }
 
+(* The Upside-down *)
+
+module type AppV = sig
+  type 'a t
+  val pure : 'a -> 'a t
+  val app : ('a -> 'b) t -> 'a t -> 'b t
+  val gfun: meta -> 'a t -> 'a t
+end
+
+module AppView (A: AppV) = struct
+  module G = Generic (struct type 'a q = 'a -> 'a A.t end)
+  open G
+  open V
+  let gfun v = fix @@ fun goto10 ->
+    let rec go: 'a. ('a, _, _) spine -> 'a A.t = function
+    | K k -> A.pure k
+    | A (s, a, f) -> let k = go s in A.app k (!:f a)
+    | R (s, a) -> let k = go s in A.app k (goto10 a) in
+    (fun x -> A.gfun (meta v x) (go (spine v x)))
+  include P
+  include View (struct type 'a r = 'a -> 'a A.t let gfun = gfun end)
+end
+
+module type AppS = sig
+  type 'a t
+  val pure : 'a -> 'a t
+  val app : ('a -> 'b) t -> 'a t -> 'b t
+  val retract : 'a t Lazy.t -> 'a t
+  val gfun : ('a t Lazy.t * meta) list -> 'a t
+end
+
+module AppSchema (A: AppS) = struct
+  module G = Generic (struct type 'a q = 'a A.t end)
+  open G
+  open S
+  let gfun sch =
+    let rec go: 'a. ('a, _, _) spine -> 'a A.t = function
+    | K k -> A.pure k
+    | A (s, a) -> let k = go s in A.app k !:a
+    | R s -> let k = go s in A.app k (A.retract goto10)
+    and goto10 = lazy (
+      A.gfun (List.map (fun (s, m) -> lazy (go s), m) sch)) in
+    Lazy.force goto10
+  include P
+  include Schema (struct type 'a r = 'a A.t let gfun = gfun end)
+end
 
 (* Type tags can be a private matter! *)
 
@@ -213,58 +259,6 @@ module Iter = struct
     go (vf x) vf
   include P
   include View (struct type 'a r = 'a -> unit let gfun = g_iter end)
-end
-
-module Endo = struct
-  module G = Generic (struct type 'a q = 'a -> 'a end)
-  open G
-  open V
-  let g_endo (vf, _) x =
-    let rec go: 'a. ('a, _, _) spine -> _ -> 'a = fun s v -> match s with
-    | K f -> f
-    | A (A (A (s, a, f), b, g), c, h) -> go s v (!:f a) (!:g b) (!:h c)
-    | A (A (s, a, f), b, g) -> go s v (!:f a) (!:g b)
-    | A (s, a, f) -> go s v (!:f a)
-    | R (s, a) -> go s v (go (v a) v) in
-    go (vf x) vf
-  include P
-  include View (struct type 'a r = 'a -> 'a let gfun = g_endo end)
-end
-
-module Fold = struct
-  open V
-  module Make (T: sig type t end) = struct
-    module G = Generic (struct type 'a q = 'a -> T.t -> T.t end)
-    open G
-    let g_fold (vf, _) x t =
-      let rec go: 'a. ('a, _, _) spine -> _ = fun s t v -> match s with
-      | K _ -> t
-      | A (s, a, f) -> go s (!:f a t) v
-      | R (s, a) -> go s (go (v a) t v) v in
-      go (vf x) t vf
-    include P
-  end
-  type ('a, 'x) t = 'a -> 'x -> 'x
-  let data0 (type a) (g: _ data0) =
-    let module M = Make (struct type t = a end) in M.(G.app0 g_fold g.view)
-  let data1 (type a) (g: _ data1) =
-    let module M = Make (struct type t = a end) in M.(G.app1 g_fold g.view)
-  let data2 (type a) (g: _ data2) =
-    let module M = Make (struct type t = a end) in M.(G.app2 g_fold g.view)
-  let data3 (type a) (g: _ data3) =
-    let module M = Make (struct type t = a end) in M.(G.app3 g_fold g.view)
-  let data4 (type a) (g: _ data4) =
-    let module M = Make (struct type t = a end) in M.(G.app4 g_fold g.view)
-  let data5 (type a) (g: _ data5) =
-    let module M = Make (struct type t = a end) in M.(G.app5 g_fold g.view)
-  let data6 (type a) (g: _ data6) =
-    let module M = Make (struct type t = a end) in M.(G.app6 g_fold g.view)
-  (* let data7 (type xxx) (omg: _ data7) = *)
-  (*   let module M = Make (struct type t = xxx end) in M.(G.app7 g_fold omg.view) *)
-  (* let data8 (type a) (g: _ data8) = *)
-  (*   let module M = Make (struct type t = a end) in M.(G.app8 g_fold g.view) *)
-  (* let data9 (type a) (g: _ data9) = *)
-  (*   let module M = Make (struct type t = a end) in M.(G.app9 g_fold g.view) *)
 end
 
 module Random = struct

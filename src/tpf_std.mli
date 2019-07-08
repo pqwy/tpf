@@ -64,45 +64,6 @@ module Iter: sig
   include Data with type 'a q := 'a -> unit and type 'a r := 'a -> unit
 end
 
-(** [Endo] is like [map] which cannot changed the type. *)
-module Endo: sig
-  include P with type 'a q := 'a -> 'a
-  val g_endo : ('a, p) view -> 'a -> 'a
-  include Data with type 'a q := 'a -> 'a and type 'a r := 'a -> 'a
-end
-
-(** Generic folds.
-
-    These are a little different from the usual folds. Instead of being
-    parameterized per constructor, they are parameterized per contained type. *)
-module Fold: sig
-  module Make (T: sig type t end) : sig
-    include P with type 'a q := 'a -> T.t -> T.t
-    val g_fold : ('a, p) view -> 'a -> T.t -> T.t
-  end
-  type ('a, 'x) t = 'a -> 'x -> 'x
-  val data0 : 'a data0 ->
-              ('a, 'x) t
-  val data1 : ('a, 'b) data1 ->
-              ('a, 'x) t -> ('b, 'x) t
-  val data2 : ('a, 'b, 'c) data2 ->
-              ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t
-  val data3 : ('a, 'b, 'c, 'd) data3 ->
-              ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t -> ('d, 'x) t
-  val data4 : ('a, 'b, 'c, 'd, 'e) data4 ->
-              ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t -> ('d, 'x) t -> ('e, 'x) t
-  val data5 : ('a, 'b, 'c, 'd, 'e, 'f) data5 ->
-              ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t -> ('d, 'x) t ->
-              ('e, 'x) t -> ('f, 'x) t
-  val data6 : ('a, 'b, 'c, 'd, 'e, 'f, 'g) data6 ->
-              ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t -> ('d, 'x) t ->
-              ('e, 'x) t -> ('f, 'x) t -> ('g, 'x) t
-  (* val data7 : ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h) data7 -> *)
-  (*             ('a, 'x) t -> ('b, 'x) t -> ('c, 'x) t -> ('d, 'x) t -> *)
-  (*             ('e, 'x) t -> ('f, 'x) t -> ('g, 'x) t -> ('h, 'x) t *)
-
-end
-
 (** Random type inhabitants. *)
 module Random: sig
   open Random
@@ -123,4 +84,46 @@ module Random: sig
   include Data
     with type 'a q := State.t -> 'a
     and type 'a r := ?base:'a -> int -> State.t -> 'a
+end
+
+(** {1:applicative Applicative traversals}
+
+    {{!Tpf.core}Spines} are very close to encoding a free applicative functor.
+
+    Flipping this upside-down provides a way to uniformly eliminate spines with
+    a chosen applicative. This captures a slightly restricted, but still large
+    class of generic functions.
+
+    {b Note.} You can safely ignore this if you don't feel like applicatives
+    today. *)
+
+(** {{!Tpf.view}View}-flavored applicative. *)
+module type AppV = sig
+  type 'a t
+  val pure : 'a -> 'a t
+  val app : ('a -> 'b) t -> 'a t -> 'b t
+  val gfun : meta -> 'a t -> 'a t
+end
+
+(* {{!Tpf.view}View} traversal. *)
+module AppView (A: AppV): sig
+  include P with type 'a q := 'a -> 'a A.t
+  val gfun : ('a, p) view -> 'a -> 'a A.t
+  include Data with type 'a q := 'a -> 'a A.t and type 'a r := 'a -> 'a A.t
+end
+
+(** {{!Tpf.schema}Schema}-flavored applicative. *)
+module type AppS = sig
+  type 'a t
+  val pure : 'a -> 'a t
+  val app : ('a -> 'b) t -> 'a t -> 'b t
+  val retract : 'a t Lazy.t -> 'a t
+  val gfun : ('a t Lazy.t * meta) list -> 'a t
+end
+
+(** {{!Tpf.schema}Schema} traversal. *)
+module AppSchema (A: AppS) : sig
+  include P with type 'a q := 'a A.t
+  val gfun : ('a, p) schema -> 'a A.t
+  include Data with type 'a q := 'a A.t and type 'a r := 'a A.t
 end

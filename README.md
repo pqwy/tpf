@@ -19,8 +19,8 @@ Tpf is closely related to other well-known datatype-generic approaches.
 It shares the underlying data model with [SYB][syb], and uses the
 [spiny][syb-reloaded] encoding. It shares the manifest representation with
 [GHC.Generics][ghc-generics]. It arises as an adaptation of approaches like
-these to a language without overloading, which gives it an idiomatic flavor, and
-lends it the name.
+these to a language without overloading, giving it an idiomatic flavor, and
+lending the name.
 
 Tpf has no dependencies and is distributed under the ISC license.
 
@@ -106,39 +106,45 @@ let data_tweedledum: _ Tpf.data3 =
       [ A (A (K tw1, qa), qb), meta0; A (K tw2, qfoo), meta1 ]) }
 ```
 
-There are further examples generic representations in
+There are further examples of *generics* (generic representations) in
 [`Tpf_std.ml`](src/tpf_std.ml).
 
 ## Making generic functions
 
-Simple random-thing generator. It doesn't know about depth or variant
-distribution!
+These come in two flavors: consumers and producers.
+
+Iterators, for instance, are consumers:
+
+```
+module G = Generic (struct type 'a q = 'a -> unit end)
+
+(* val g_iter: ('a, G.p) view -> 'a -> unit *)
+let rec g_iter v x =
+  let rec go: 'a. ('a, _, _) V.schema -> unit = V.(function
+  | K _ -> ()
+  | A (s, a, f_a) -> go s; !:f_a a
+  | R (s, a) -> go s; g_iter v a in
+  go (spine v x)
+```
+
+While random generators are producers:
 
 ```
 let pick: 'a list -> 'a = ...
 
-module G = Tpf.Generic (struct type 'a q = unit -> 'a end)
+module G = Generic (struct type 'a q = unit -> 'a end)
 
 (* val g_random: ('a, G.p) schema -> unit -> 'a *)
 let rec g_random sch () =
-  let rec go: 'a. ('a, _, _) Tpf.S.schema -> 'a = Tpf.S.(function
+  let rec go: 'a. ('a, _, _) S.schema -> 'a = S.(function
   | K f -> f
   | A (s, f_a) -> go s G.(!:f_a ())
   | R s -> go s (g_random schema ())) in
   go (pick sch |> schema)
-
-(* This has to be made available. *)
-include G.P
-
-(* This is nice to have available. *)
-include G.Data (struct type 'a r = unit -> 'q let gfun = g_random end)
 ```
 
-```
-let r_tweedledum r_a r_b = data3 tweedledum r_foo r_a r_b
-```
-
-There are further examples of generic functions in [`tpf-ext`](src-ext).
+There are further examples of generic functions in [`Tpf_std`](src/tpf_std.ml)
+and [`tpf-ext`](src-ext).
 
 ## Performance
 
