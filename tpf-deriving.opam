@@ -1,0 +1,20 @@
+opam-version: "2.0"
+homepage:     "https://github.com/pqwy/tpf"
+dev-repo:     "git+https://github.com/pqwy/tpf.git"
+bug-reports:  "https://github.com/pqwy/tpf/issues"
+doc:          "http://pqwy.github.io/tpf/doc"
+author:       "David Kaloper Meršinjak <dk505@cam.ac.uk>"
+maintainer:   "David Kaloper Meršinjak <dk505@cam.ac.uk>"
+license:      "ISC"
+synopsis:     "Minimalist datatype-generic programming"
+description:  "[@@deriving tpf]"
+
+build: [[ "dune" "subst" ] {pinned}
+        [ "dune" "build" "-p" name "-j" jobs ]]
+depends: [
+  "ocaml" {>= "4.05.0"}
+  "dune" {build & >= "1.8"}
+  "tpf"
+  "compiler-libs"
+  "ppx_deriving"
+]

@@ -1,0 +1,7 @@
+(library
+ (public_name tpf-deriving)
+ (name ppx_deriving_tpf)
+ (synopsis "[@@deriving tpf]")
+ (modules ppx_deriving_tpf)
+ (libraries ppx_deriving.api)
+ (kind ppx_deriver))
