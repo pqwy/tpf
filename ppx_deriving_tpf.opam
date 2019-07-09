@@ -15,6 +15,5 @@ depends: [
   "ocaml" {>= "4.05.0"}
   "dune" {build & >= "1.8"}
   "tpf"
-  "compiler-libs"
   "ppx_deriving"
 ]

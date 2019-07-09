@@ -1,5 +1,5 @@
 (library
- (public_name tpf-deriving)
+ (public_name ppx_deriving_tpf)
  (name ppx_deriving_tpf)
  (synopsis "[@@deriving tpf]")
  (modules ppx_deriving_tpf)
