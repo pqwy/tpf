@@ -55,18 +55,8 @@ module S : sig
   | R : ('r -> 'b, 'r, 'q) spine -> ('b, 'r, 'q) spine
 end
 
-type meta = { name : string; index : int; fields : string array }
-(** Meta blocks collect extra information about a constructor.
-
-    Constraints:
-
-    {ul
-    {- {{!index}Indices} of meta blocks are constructor identity and
-       must be distinct within a type.}
-    {- Plain records must have {!name} [""].}
-    {- Variants must have no {!fields}.}}
-
-    These constrains may be relied upon by generic functions. *)
+type meta
+(** Meta blocks collect extra information about a constructor. *)
 
 type ('a, +'q) view = ('a -> ('a, 'a, 'q) V.spine) * ('a -> meta)
 (** Generic representation for consumer functions.
@@ -154,7 +144,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'x) data9 =
   { view   : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) view) app9
   ; schema : 'q. ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, ('x, 'q) schema) app9 }
 
-(** {1:exports Export signatures} *)
+(** {1 Writing generic functions} *)
 
 (** Packages up the basic user-facing part of a {!Generic} instance.
 
@@ -212,8 +202,6 @@ module type Data = sig
               'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q ->
               'i q -> 'x r
 end
-
-(** {1 Writing generic functions} *)
 
 (** Interface between the outside world and a [spine].
 
@@ -324,33 +312,34 @@ let data1 (d: _ data1) = app1 gfun d.view
              'a q -> 'b q -> 'c q -> 'd q -> 'e q -> 'f q -> 'g q -> 'h q -> 'i q -> 'res
 end
 
-(** {1:metaf Dealing with [meta]} *)
+(** {1:metaf Manipulating [meta]} *)
 
-val variant : ?fields:string array -> int -> string -> meta
-(** [variant ~fields name index] creates a {{!meta}meta block} for the
-    constructor named [name], with index [index] within its type.
+val variant : ?labels:string array -> int -> string -> meta
+(** [variant ~labels index name] is a variant, a sum type component.
 
-    If [fields] are provided, the constructor is an inline record. *)
+    [index] is this constructor position in the type definition, and must be
+    unique within the type. [name] is the constructor name, and must not be
+    [""]. If [labels] are specified, the constructor is an inline record. *)
 
 val record : string array -> meta
-(** [record fields] creates a {{!meta}meta block} for a plain record. *)
+(** [record labels] is a record. It must be the only constructor in the type. *)
 
 val name : meta -> string
-(** [name meta] is the name of [meta]. *)
+(** [name meta] is constructor name. If [meta] is a record, its name is [""]. *)
 
 val index : meta -> int
-(** [index meta] the index of [meta]. *)
+(** [index meta] is constructor position in the type definition. *)
 
-val fields : meta -> int
-(** [fields meta] is the number of fields in [meta]. *)
+val labels : meta -> int
+(** [labels meta] is the number of constructor labels. *)
 
-val field : meta -> int -> string
-(** [field meta i] is the [i]-th field in [meta].
+val label : meta -> int -> string
+(** [label meta i] is [i]-th constructor label.
 
-    @raise Invalid_argument when [meta] does not contain [i]-th field. *)
+    @raise Invalid_argument then the constructor does not have [i]-th label. *)
 
-val has_field : meta -> string -> bool
-(** Checks if the meta block has the named field. *)
+val has_label : meta -> string -> bool
+(** [has_label m name] is [true] iff the constructor has a label [name]. *)
 
 val pp_meta : Format.formatter -> meta -> unit
 (** [pp_meta] pretty-prints a meta block in a human-readable way. *)

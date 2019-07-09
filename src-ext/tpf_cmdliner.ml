@@ -7,7 +7,7 @@ open Cmdliner
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 let err_recursive () =
   invalid_arg "Tpf_cmdliner: recursive types are not supported"
-let err_no_fields =
+let err_no_labels =
   invalid_arg "Tpf_cmdliner: `%a': not a record" pp_meta
 let err_not_singleton () =
   invalid_arg "Tpf_cmdliner: expecting a type with one constructor."
@@ -24,10 +24,10 @@ module Opt = struct
       | K k -> Term.const k
       | R _ -> err_recursive ()
       | A (s, a) ->
-          let nfo = Arg.info [field m i] in
+          let nfo = Arg.info [label m i] in
           let arg = Arg.(required @@ opt (some !:a) None nfo) in
           Term.(term (i - 1) s $ arg) in
-      term (fields m - 1) s
+      term (labels m - 1) s
   | _ -> err_not_singleton ()
   include Schema (struct type 'a r = 'a Term.t let gfun = g end)
 end
@@ -36,16 +36,16 @@ module Opt_def = struct
   open V
   let g v x =
     let m = meta v x in
-    match fields m with
-    | 0 -> err_no_fields m
+    match labels m with
+    | 0 -> err_no_labels m
     | _ ->
         let rec term: 'a. _ -> ('a, _, _) spine -> 'a Term.t = fun i -> function
         | K k -> Term.const k
         | R _ -> err_recursive ()
         | A (s, a, f) ->
-            let nfo = Arg.info [field m i] in
+            let nfo = Arg.info [label m i] in
             Term.(term (i - 1) s $ Arg.(value @@ opt !:f a nfo)) in
-        term (fields m - 1) (spine v x)
+        term (labels m - 1) (spine v x)
   include View (struct type 'a r = 'a -> 'a Term.t let gfun = g end)
 end
 

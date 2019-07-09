@@ -26,7 +26,7 @@ module To = struct
   open V
   open Sexplib0.Sexp
 
-  let field m i x = List [Atom (field m i); x]
+  let field m i x = List [Atom (label m i); x]
 
   let rec g_to_sexp: 'a. ('a, _) view -> 'a e = fun v x ->
     let rec variant: 'a. _ -> _ -> ('a, _, _) spine -> _ = fun v0 acc -> function
@@ -39,11 +39,11 @@ module To = struct
     | A (s, a, f) -> record v0 (field m i (!:f a) :: acc) m (i - i) s
     | R (s, a) -> record v0 (field m i (g_to_sexp v0 a) :: acc) m (i - 1) s in
     let m = meta v x in
-    match spine v x, fields m, name m with
+    match spine v x, labels m, name m with
     | K _, _, name -> Atom name
     | s  , 0, name -> List (Atom name :: variant v [] s)
-    | s  , _, ""   -> List (record v [] m (fields m - 1) s)
-    | s  , _, name -> List (Atom name :: record v [] m (fields m - 1) s)
+    | s  , _, ""   -> List (record v [] m (labels m - 1) s)
+    | s  , _, name -> List (Atom name :: record v [] m (labels m - 1) s)
 
   include G.P
   include G.View (struct type 'a r = 'a e let gfun = g_to_sexp end)
@@ -70,7 +70,7 @@ module Of = struct
   let err_duplicate_field = failwith "duplicate field: %s"
   let err_extra_fields m map =
     let pp ppf =
-      Smap.iter (fun f _ -> if not (has_field m f) then pf ppf " %s" f) in
+      Smap.iter (fun f _ -> if not (has_label m f) then pf ppf " %s" f) in
     failwith "extra fields:%a" pp map
   let of_sexp_error exn sexp = match exn with
   | Failure err ->
@@ -114,7 +114,7 @@ module Of = struct
     List.fold_left f Smap.empty xs
 
   let get_field m i map =
-    let f = field m i in
+    let f = label m i in
     match Smap.find_opt f map with
       Some x -> x | _ -> err_missing_field f
 
@@ -136,10 +136,10 @@ module Of = struct
     | A (s, a) -> go s (i - 1) (fun f map -> k (f (!:a (get_field m i map))) map)
     | R s -> go s (i - 1) (fun f map -> k (f (goto10 (get_field m i map))) map)
     in
-    let extract = go s (fields m - 1) (fun x _ -> x) in
+    let extract = go s (labels m - 1) (fun x _ -> x) in
     fun xs ->
       let map = field_map_of_sexp xs in
-      if Smap.cardinal map <= fields m then extract map
+      if Smap.cardinal map <= labels m then extract map
       else err_extra_fields m map
 
   let g_of_sexp = function
@@ -155,7 +155,7 @@ module Of = struct
       let rec map =
         let f map (s, m) =
           Smap.add (name m)
-          (lazy (if fields m = 0 then variant goto10 s else record goto10 m s))
+          (lazy (if labels m = 0 then variant goto10 s else record goto10 m s))
           map in
         lazy (List.fold_left f Smap.empty ss)
       and goto10 sexp =

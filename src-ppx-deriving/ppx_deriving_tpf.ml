@@ -152,11 +152,11 @@ let tpf_s_a = let id = lid ~path "A" in fun s f -> construct id [s; f]
 
 let tpf_variant =
   let id = lid ~path:["Tpf"] "variant" in
-  fun ?fields name i ->
-  let fields = match fields with
-  | Some fs -> [Labelled "fields", Exp.array (List.map const_s fs)]
+  fun ?labels name i ->
+  let labels = match labels with
+  | Some fs -> [Labelled "labels", Exp.array (List.map const_s fs)]
   | None -> [] in
-  Exp.(apply (ident id) ([Nolabel, i; Nolabel, name] @ fields))
+  Exp.(apply (ident id) ([Nolabel, i; Nolabel, name] @ labels))
 
 let id_data n = lid ~path:["Tpf"] ("data" ^ string_of_int n)
 
@@ -189,7 +189,7 @@ let str_of_type ~options:_ ~path:_ tdecl =
   let types, tyvars, tyref = core_types_in tdecl in
   assert_arity tdecl types;
   structure @@ fun defn ->
-    let case ?fields ~pat ~ctor name i args =
+    let case ?labels ~pat ~ctor name i args =
       let argvars = List.map (fun _ -> sym ()) args in
       let argrefs = List.map (Exp.ident % to_lid) argvars in
       let tyrefs = List.map tyref args in
@@ -198,7 +198,7 @@ let str_of_type ~options:_ ~path:_ tdecl =
       let vk = defn "vk" @@ tpf_v_k cons
       and sk = defn "sk" @@ tpf_s_k cons in
       let meta = defn "meta" @@
-        tpf_variant ?fields (const_s name) (const_i i) in
+        tpf_variant ?labels (const_s name) (const_i i) in
       let mcase = Exp.case (pat (List.map (fun _ -> Pat.any ()) args)) meta
       and vcase =
         Exp.case (pat (List.map Pat.var argvars))
@@ -229,14 +229,14 @@ let str_of_type ~options:_ ~path:_ tdecl =
               and ctor vars =
                 construct ctor_id [Exp.record (labelled lbls vars) None] in
               case pcd_name.txt i ~pat ~ctor
-              ~fields:(List.map (fun l -> l.pld_name.txt) lbls)
+              ~labels:(List.map (fun l -> l.pld_name.txt) lbls)
               (List.map (fun l -> l.pld_type) lbls))
     | Ptype_record lbls ->
         let pat vars = Pat.record (labelled lbls vars) Closed
         and ctor vars = Exp.record (labelled lbls vars) None in
         [ case "" 0 ~pat ~ctor
           (List.map (fun l -> l.pld_type) lbls)
-          ~fields:(List.map (fun l -> l.pld_name.txt) lbls) ]
+          ~labels:(List.map (fun l -> l.pld_name.txt) lbls) ]
     in
     let vcases = List.map (fun (v, _, _) -> v) cases
     and mcases = List.map (fun (_, m, _) -> m) cases

@@ -19,7 +19,7 @@ module S = struct
   | R : ('r -> 'b, 'r, 'q) spine -> ('b, 'r, 'q) spine
 end
 
-type meta = { name : string; index : int; fields : string array }
+type meta = { index : int; name : string; labels : string array }
 
 type ('a, +'q) view = ('a -> ('a, 'a, 'q) V.spine) * ('a -> meta)
 type ('a, +'q) schema = (('a, 'a, 'q) S.spine * meta) list
@@ -175,30 +175,31 @@ end
 let invalid_arg fmt = Format.kasprintf invalid_arg fmt
 
 let pf = Format.fprintf
+let pp_string = Format.pp_print_string
 let pp_iter ?(sep = fun ppf () -> pf ppf ";@ ") iter pp ppf v =
   let first = ref true in
   let f x = if !first then first := false else sep ppf (); pp ppf x in
   iter f v
 
-let pp_meta ppf m = match m.fields with
-| [||] -> pf ppf "%s (...)" m.name
-| fs ->
-    pf ppf "@[<1>%a{%a}@]"
-    (fun ppf -> function "" -> () | n -> pf ppf "%s " n) m.name
-    (pp_iter Array.iter (fun ppf -> pf ppf "%s")) fs
+let pp_meta ppf m =
+  let pp_name ppf = function "" -> () | name -> pf ppf "%s " name
+  and pp_body ppf = function
+  | [||] -> pp_string ppf "(...)"
+  | fs -> pf ppf "{%a}" (pp_iter Array.iter pp_string) fs in
+  pf ppf "@[<1>%a%a@]" pp_name m.name pp_body m.labels
 
 (* Metablock stuff. *)
 
-let variant ?(fields = [||]) index name = { name; index; fields }
-let record fields = { name = ""; index = 0; fields }
+let variant ?(labels = [||]) index name = { name; index; labels }
+let record labels = { name = ""; index = 0; labels }
 
 let name m = m.name
 let index m = m.index
-let fields m = Array.length m.fields
-let has_field { fields; _ } f = Array.exists (String.equal f) fields
+let labels m = Array.length m.labels
+let has_label m x = Array.exists (String.equal x) m.labels
 
-let err_field i m = invalid_arg "Tpf: invalid field #%d of %a" i pp_meta m
-let field ({ fields; _ } as m) i =
-  if 0 <= i && i < Array.length fields then
-    Array.unsafe_get fields i
-  else err_field i m
+let err_label i m = invalid_arg "Tpf: invalid label #%d of %a" i pp_meta m
+let label ({ labels; _ } as m) i =
+  if 0 <= i && i < Array.length labels then
+    Array.unsafe_get labels i
+  else err_label i m

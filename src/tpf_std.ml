@@ -92,12 +92,12 @@ module AppV (A: AppV) = struct
   module G = Generic (struct type 'a q = 'a -> 'a A.t end)
   open G
   open V
-  let gfun v = fix @@ fun goto10 ->
+  let gfun (spine, meta) = fix @@ fun goto10 ->
     let rec go: 'a. ('a, _, _) spine -> 'a A.t = function
     | K k -> A.pure k
     | A (s, a, f) -> let k = go s in A.app k (!:f a)
     | R (s, a) -> let k = go s in A.app k (goto10 a) in
-    (fun x -> A.gfun (meta v x) (go (spine v x)))
+    (fun x -> A.gfun (meta x) (go (spine x)))
   include P
   include View (struct type 'a r = 'a -> 'a A.t let gfun = gfun end)
 end
@@ -120,7 +120,7 @@ module AppS (A: AppS) = struct
     | A (s, a) -> let k = go s in A.app k !:a
     | R s -> let k = go s in A.app k (A.retract goto10)
     and goto10 = lazy (
-      A.gfun (List.map (fun (s, m) -> lazy (go s), m) sch)) in
+      A.gfun (List.map (fun (spine, meta) -> lazy (go spine), meta) sch)) in
     Lazy.force goto10
   include P
   include Schema (struct type 'a r = 'a A.t let gfun = gfun end)
@@ -143,9 +143,10 @@ module Eq = struct
   module Eq1 = Generic (struct type 'a q = 'a jmeq end)
   module Eq2 = Generic (struct type 'a q = 'a ttag end)
 
-  let g_eq ((vs1, vm1), (vs2, vm2)) =
+  let g_eq ((spine1, meta1), (spine2, meta2)) =
     let open V in
-    let rec eq a b = index (vm1 a) = index (vm2 b) && go (vs1 a) (vs2 b)
+    let rec eq a b =
+      index (meta1 a) = index (meta2 b) && go (spine1 a) (spine2 b)
     and go: 'a 'b. ('a, _, _) spine -> ('b, _, _) spine -> bool =
       fun s1 s2 -> match s1, s2 with
     | K _          , K _           -> true
@@ -201,11 +202,11 @@ module Cmp = struct
 
   let err_spine () = invalid_arg "Tpf_std.compare: incoherent spine"
 
-  let g_cmp ((vs1, vm1), (vs2, vm2)) =
+  let g_cmp ((spine1, meta1), (spine2, meta2)) =
     let open V in
     let rec cmp a b =
-      let c = index (vm1 a) - index (vm2 b) in
-      if c = 0 then go (vs1 a) (vs2 b) else if c < 0 then -1 else 1
+      let c = index (meta1 a) - index (meta2 b) in
+      if c = 0 then go (spine1 a) (spine2 b) else if c < 0 then -1 else 1
     and go: 'a 'b. ('a, _, _) spine -> ('b, _, _) spine -> int =
       fun s1 s2 -> match s1, s2 with
     | A (s1, a, af), A (s2, b, ag) ->
@@ -251,12 +252,12 @@ module Iter = struct
   module G = Generic (struct type 'a q = 'a -> unit end)
   open G
   open V
-  let g_iter (vf, _) x =
+  let g_iter (spine, _) x =
     let rec go: 'a. ('a, _, _) spine -> _ = fun s v -> match s with
     | K _ -> ()
     | A (s, a, af) -> go s v; !:af a
     | R (s, a) -> go s v; go (v a) v in
-    go (vf x) vf
+    go (spine x) spine
   include P
   include View (struct type 'a r = 'a -> unit let gfun = g_iter end)
 end
@@ -279,10 +280,9 @@ module Random = struct
     | A (A (s, a), b) -> go s size rng (!:a rng) (!:b rng)
     | A (s, a) -> go s size rng (!:a rng)
     | R s -> go s size rng (g_gen sch ?base size rng) in
-    if size < 1 then match base with Some x -> x | _ -> null sch
-    else
-      let s = List.(nth sch (State.int rng (length sch))) in
-      go (spine s) (size - 1) rng
+    if size < 1 then match base with Some x -> x | _ -> null sch else
+      let spine, _ = List.(nth sch (State.int rng (length sch))) in
+      go spine (size - 1) rng
   include P
   include Schema (struct
     type 'a r = ?base:'a -> int -> State.t -> 'a

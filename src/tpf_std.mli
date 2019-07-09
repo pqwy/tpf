@@ -1,19 +1,13 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
-(** Tpf nice-to-haves.
-
-    Neither the generic function definitions nor their use depends on this
-    module, but it is nice to have. *)
+(** Tpf nice-to-haves. *)
 
 open Tpf
 
 val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
 (** [fix f x] is [f (fix f) x], the usual fixpoint on functions.
-
-    This one maximizes sharing. It only causes [f _] to be evaluated once.
-    [fix] likes functions of the form [fun self -> ... (fun x -> ...)].
-
+    This one maximizes sharing: [f _] is evaluated only once.
     Sharing is caring. *)
 
 (** {1 Stdlib types}
