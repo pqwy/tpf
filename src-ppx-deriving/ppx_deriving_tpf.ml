@@ -50,20 +50,6 @@ module Cmp = struct
       (Ptyp_any | Ptyp_var _ | Ptyp_arrow _ | Ptyp_tuple _ | Ptyp_constr _) -> 1
 end
 
-(* type core_type_desc = *)
-(*     Ptyp_any *)
-(*   | Ptyp_var of string *)
-(*   | Ptyp_arrow of Asttypes.arg_label * core_type * core_type *)
-(*   | Ptyp_tuple of core_type list *)
-(*   | Ptyp_constr of Longident.t Asttypes.loc * core_type list *)
-(*   | Ptyp_object of object_field list * Asttypes.closed_flag *)
-(*   | Ptyp_class of Longident.t Asttypes.loc * core_type list *)
-(*   | Ptyp_alias of core_type * string *)
-(*   | Ptyp_variant of row_field list * Asttypes.closed_flag * Asttypes.label list option *)
-(*   | Ptyp_poly of string Asttypes.loc list * core_type *)
-(*   | Ptyp_package of package_type *)
-(*   | Ptyp_extension of extension *)
-
 let lid ?(path = []) str =
   let txt = match path @ [str] with
   | x::xs -> List.fold_left (fun lid x -> Ldot (lid, x)) (Lident x) xs

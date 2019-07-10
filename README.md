@@ -15,10 +15,10 @@ types. Such functions require only the base language, need no runtime, and
 seamlessly interoperate with the rest of OCaml. Tpf works in the same stage as
 the rest of your program, and doesn't rely on meta-programming.
 
-Tpf is closely related to other well-known datatype-generic approaches.
-It shares the underlying data model with [SYB][syb], and uses the
-[spiny][syb-reloaded] encoding. It shares the manifest representation with
-[GHC.Generics][ghc-generics]. It arises as an adaptation of approaches like
+Tpf is closely related to other well-known datatype-generic approaches.  It
+shares the underlying data model with [SYB][syb], and uses the
+[spiny][syb-reloaded] encoding. This is a manifest representation, like the one
+[GHC.Generics][ghc-generics] use. It arises as an adaptation of approaches like
 these to a language without overloading, giving it an idiomatic flavor, and
 lending the name.
 
@@ -50,17 +50,15 @@ the interfaces. It can be consulted [online][doc].
 
 Tpf contains several optional libraries and sub-libraries:
 
-- opam package `tpf` is at the heard of everything.
-- opam package `tpf-ext` throws support for various third-party libs into the
-  mix:
+- opam package `tpf` contains the core library:
+- opam package `tpf-ext` adds support for various third-party libs:
   - `tpf-ext.fmt` has generic formatters and depends on [`fmt`][fmt].
   - `tpf-ext.sexplib` has generic [`sexplib`][sexplib] conversions.
   - `tpf-ext.cmdliner` has some generic [`cmdliner`][cmdliner] terms.
   - `tpf-ext.qcheck` is generic [`qcheck`][qcheck].
   - `tpf-ext.crowbar` is generic [`crowbar`][crowbar].
-  - tpf_json.ml
 - opam package `tpf-deriving` contains the generic deriver. It is worth pointing
-  out that Tpf was built so that you can also use it without PPX.
+  out that Tpf can be used without PPX.
 
 [fmt]: https://erratique.ch/software/fmt
 [sexplib]: https://github.com/janestreet/sexplib0
@@ -70,77 +68,89 @@ Tpf contains several optional libraries and sub-libraries:
 
 ## Using generic functions
 
-Equip a type with its generic:
-
+Equip a type with its *generic*:
 ```
 type ('a, 'b) tweedledum =
-| Tw0 of 'a * 'b
-| Tw1 of foo
+| Tw0 of 'a * int
+| Tw1 of 'b
 [@@deriving tpf]
 ```
 
-This derives `data_tweedledum`. You can apply any generic function to it:
-
+This derives `data_tweedledum`, the generic representation of `tweedledum`.
+That's the key to applying generic functions to `tweedledum`:
 ```
-(* val pp_tweedledum: 'a Fmt.t -> 'b Fmt.t -> ('a, 'b) tweedledum Fmt.t *)
+(* type 'a eq = 'a -> 'b -> bool
+   val eq_tweedledum: 'a eq -> 'b eq -> ('a, 'b) tweedledum eq *)
+
+let eq_tweedledum eq_a eq_b =
+  Tpf_std.Eq.data3 data_tweedledum (=) eq_a eq_b
+```
+```
+(* type 'a fmt = Format.formatter -> 'a -> unit
+   val pp_tweedledum: 'a fmt -> 'b fmt -> ('a, 'b) tweedledum fmt *)
 
 let pp_tweedledum pp_a pp_b =
-  Tpf_fmt.data3 data_tweedledum pp_foo pp_a pp_b
+  Tpf_fmt.data3 data_tweedledum Fmt.int pp_a pp_b
 ```
 
-When ready, you can opt to drop the training wheels:
+To *instantiate* a generic function at a given type, you need to supply its
+`data`, and one value per type it references — the *query* — that determines
+what to do at these other types.
 
+You can also opt to drop the training wheels:
 ```
-let meta0 = Tpf.variant "Tw0" 0
-let meta1 = Tpf.variant "Tw1" 1
-let tw0 a b = Tw0 (a, b)
-let tw1 foo = Tw1 foo
+let meta0 = Tpf.variant 0 "Tw0"
+let meta1 = Tpf.variant 1 "Tw1"
+let tw0 a x = Tw0 (a, x)
+let tw1 b = Tw1 b
 let data_tweedledum: _ Tpf.data3 =
-  { view = (fun qfoo qa qb ->
-      V.(function
-      | Tw0 (a, b) -> A (A (K tw0, a, qa), b, qb)
-      | Tw1 foo -> A (K tw1, foo, qfoo)),
+  { view = (fun qint qa qb ->
+      Tpf.V.(function
+      | Tw0 (a, x) -> A (A (K tw0, a, qa), x, qint)
+      | Tw1 b -> A (K tw1, b, qb)),
       (function Tw0 _ -> meta0 | Tw1 _ -> meta1))
-  ; schema =
-    S.(fun qfoo qa qb ->
-      [ A (A (K tw1, qa), qb), meta0; A (K tw2, qfoo), meta1 ]) }
+  ; schema = Tpf.S.(fun qint qa qb ->
+      [ A (A (K tw0, qa), qint), meta0; A (K tw1, qb), meta1 ]) }
 ```
 
-There are further examples of *generics* (generic representations) in
-[`Tpf_std.ml`](src/tpf_std.ml).
+There are further examples of generics in [`Tpf_std`](src/tpf_std.ml).
 
-## Making generic functions
+## Writing generic functions
 
 These come in two flavors: consumers and producers.
 
-Iterators, for instance, are consumers:
-
+Iterators, for instance, are consumers. Consumers work on a `Tpf.view`:
 ```
-module G = Generic (struct type 'a q = 'a -> unit end)
+module G = Tpf.Generic (struct type 'a q = 'a -> unit end)
+open Tpf
+open G
 
 (* val g_iter: ('a, G.p) view -> 'a -> unit *)
-let rec g_iter v x =
-  let rec go: 'a. ('a, _, _) V.schema -> unit = V.(function
+
+let rec g_iter view x =
+  let rec go: 'a. ('a, _, _) V.spine -> unit = V.(function
   | K _ -> ()
   | A (s, a, f_a) -> go s; !:f_a a
-  | R (s, a) -> go s; g_iter v a in
-  go (spine v x)
+  | R (s, a) -> go s; g_iter view a) in
+  go (spine view x)
 ```
 
-While random generators are producers:
-
+While random generators are producers. Producers work on a `Tpf.schema`:
 ```
 let pick: 'a list -> 'a = ...
 
 module G = Generic (struct type 'a q = unit -> 'a end)
+open Tpf
+open G
 
 (* val g_random: ('a, G.p) schema -> unit -> 'a *)
-let rec g_random sch () =
-  let rec go: 'a. ('a, _, _) S.schema -> 'a = S.(function
+
+let rec g_random schema () =
+  let rec go: 'a. ('a, _, _) S.spine -> 'a = S.(function
   | K f -> f
   | A (s, f_a) -> go s G.(!:f_a ())
   | R s -> go s (g_random schema ())) in
-  go (pick sch |> schema)
+  go (pick schema |> spine)
 ```
 
 There are further examples of generic functions in [`Tpf_std`](src/tpf_std.ml)
@@ -156,19 +166,20 @@ recursive occurrences, and use this function to measure the length of a list.
 It takes about 5x the time it takes `List.length`.
 
 Of course it does. `List.length` compiles to a 4-instruction loop. The Tpf
-version ends reconstructs the entire list (albeit lazily), and explores every
-field of every block in it.
+version reconstructs the entire list (albeit lazily), and explores every field
+of every block in it.
 
 ### ... and Tpf is lightning fast
 
-If you use [ppx_sexp_conv][ppx-sexp-conv], the PPX-based Sexplib deriver, and
-compare the performance of `sexp_of_tweedledum` functions it generates to the
-performance of a Tpf-based generic version, the ratio is about 1.25 (that is,
-generic version is 25% slower).
+If you use the industry-leading PPX-based Sexplib deriver,
+[ppx_sexp_conv][ppx-sexp-conv], and compare the performance of derived
+conversion functions (`sexp_of_tweedledum` / `tweedledum_of_sexp`) to the
+performance of a Tpf-based generic version, the ratio is about 1.25. Generic
+version is 25% slower.
 
 If you compose these conversion functions with something that interacts with the
-actual strings, the overall performance hit of using the generic version drops
-to just below 10%.
+actual bytes, the overall performance hit of using generics drops to just below
+10%.
 
 Incidentally, most attempts at writing a generic printer will end up being
 *faster* than hand-written printers, as `CamlinternalFormat.make_printf` is
@@ -186,10 +197,10 @@ It doesn't cost much to try.
 
 ## Compared to alternatives
 
-### PPX derivers
+### PPX deriving
 
-The use cases of [`ppx-deriving`][ppx-deriving] overlap with those of Tpf, even
-if the two approaches are meant to do different things.
+The use cases of [ppx_deriving][ppx_deriving] overlap with those of Tpf, even if
+the two approaches are meant to do different things.
 
 - Tpf is generally slower, especially when consuming values.
 - Tpf is less flexible, as it can not extend the language.
@@ -202,10 +213,12 @@ if the two approaches are meant to do different things.
 (As seen [here][ocaml-syb].)
 
 - Tpf does not require a patched compiler.
-- Tpf is faster because the manifest representations turn out to be.
-- Tpf supports creating values, but these could be added to OCaml SYB too.
-- Tpf is laid out to be more practically usable. But because at its heart it is
-  still a variants of SYB, their expressivity is the same.
+- Tpf has no concept of overloading, so the user is responsible for manually
+  specifying what to do at contained types.
+- Tpf is faster because the manifest representations and internalized recursion
+  turn out to be.
+- Tpf is typically easier to write generic functions for. But their
+  expressivity is still exactly the same.
 
 ### Generic programming in OCaml
 
@@ -216,11 +229,11 @@ differences that make Tpf feel more natural to an OCaml programmer.
 
 - Tpf generic functions are parametrically polymorphic.
 - Tpf does not essentially depend on PPX extension points.
-- Tpf does not import an overloading semantics into your programs.
+- Tpf does not import its private overloading semantics into your programs.
 - Tpf does not hide the fact that a particular function is not implemented at a
   particular type from the type checker.
 - Tpf is decidedly minimalist.
   
-[ppx-deriving]: https://github.com/ocaml-ppx/ppx_deriving
+[ppx_deriving]: https://github.com/ocaml-ppx/ppx_deriving
 [ocaml-syb]: https://github.com/yallop/ocaml-syb
 [generic-programming-in-ocaml]: https://arxiv.org/pdf/1812.11665.pdf
