@@ -40,7 +40,7 @@ end
 
 (** [S] is for {!schema}.
 
-    An instantiated {e schema spine} encodes a type constructor and its
+    An instantiated {e schema spine} encodes type constructors and their
     pointwise queries.
 
     The type parameters are:
@@ -315,14 +315,17 @@ end
 (** {1:metaf Manipulating [meta]} *)
 
 val variant : ?labels:string array -> int -> string -> meta
-(** [variant ~labels index name] is a variant, a sum type component.
+(** [variant ~labels index name] is a variant, component in a sum type.
 
     [index] is this constructor position in the type definition, and must be
     unique within the type. [name] is the constructor name, and must not be
-    [""]. If [labels] are specified, the constructor is an inline record. *)
+    [""].
+
+    If [labels] are specified, the constructor is an inline record. *)
 
 val record : string array -> meta
-(** [record labels] is a record. It must be the only constructor in the type. *)
+(** [record labels] is a record. It must be the only constructor in the type,
+    and [labels] must be non-empty. *)
 
 val name : meta -> string
 (** [name meta] is constructor name. If [meta] is a record, its name is [""]. *)

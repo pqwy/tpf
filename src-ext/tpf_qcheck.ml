@@ -4,53 +4,37 @@
 open Tpf
 open QCheck
 
-type ('p, 'q) nat = { f: 'a. ('a, 'p) app -> ('a, 'q) app }
-
-let smap f sch =
-  let rec go: 'a. ('a, _, _) S.spine -> ('a, _, _) S.spine = function
-  | K k -> K k
-  | A (s, af) -> A (go s, f.f af)
-  | R s -> R (go s) in
-  List.map (fun (s, m) -> go s, m) sch
-
-let vmap f (vf, mf) =
-  let rec go: 'a. ('a, _, _) V.spine -> ('a, _, _) V.spine = function
-  | K k -> K k
-  | A (s, a, af) -> A (go s, a, f.f af)
-  | R (s, a) -> R (go s, a) in
-  (fun x -> go (vf x)), mf
-
 module G = Generic (struct type 'a q = 'a arbitrary end)
 open G
 
-let small arb a = match arb.small with Some f -> f a | _ -> 1
-let g_small (vf, _) x =
+let small (vf, _) x =
+  let small arb a = match arb.small with Some f -> f a | _ -> 1 in
   let rec go: 'a. ('a, _, _) V.spine -> _ = function
   | K _ -> 1
   | A (s, a, f) -> go s + small !:f a
   | R (s, a) -> go s + go (vf a) in
   go (vf x)
 
-let shrink arb a i = match arb.shrink with Some f -> f a i | _ -> i a
 let g_shrink (vf, _) x i =
+  let shrink arb a i = match arb.shrink with Some f -> f a i | _ -> i a in
   let rec go: 'a. ('a, _, _) V.spine -> 'a Iter.t = fun s i -> match s with
   | V.K x -> i x
   | V.A (s, a, f) -> go s (fun x -> shrink !:f a (fun a -> i (x a)))
   | R (s, a) -> go s (fun x -> go (vf a) (fun a -> i (x a))) in
   go (vf x) i
 
-let print arb a = match arb.print with Some f -> f a | _ -> "<?>"
-let fmt_of_arb arb = Tpf_fmt.(!(fun ppf v -> Fmt.string ppf (print (!:arb) v)))
-let gen_of_arb arb = Tpf_std.Random.(!(G.(!:arb).gen))
+let gen s =
+  Tpf_std.(Random.(g_gen (smap { nat = fun arb -> !(!:arb.gen) } s)))
 
-let g_print v = Fmt.strf "%a" (Tpf_fmt.g_pp (vmap { f = fmt_of_arb } v))
+let pp v =
+  let to_string arb a = match arb.print with Some f -> f a | _ -> "<?>" in
+  let nat arb = Tpf_fmt.(!(fun ppf v -> Fmt.string ppf (to_string !:arb v))) in
+  Tpf_fmt.g_pp (Tpf_std.vmap { nat } v)
 
-let g_arb v sch ?base size =
-  let sch = smap { f = gen_of_arb } sch in
-  make (Tpf_std.Random.g_gen sch ?base size)
-  ~small:(g_small v)
-  ~shrink:(g_shrink v)
-  ~print:(g_print v)
+let g_arb v schema ?base size =
+  make (gen schema ?base size)
+  ~small:(small v) ~shrink:(g_shrink v)
+  ~print:(pp v |> Fmt.to_to_string)
 
 include P
 

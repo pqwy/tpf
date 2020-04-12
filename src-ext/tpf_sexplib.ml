@@ -6,20 +6,11 @@ open Tpf
 let pf = Format.fprintf
 let failwith fmt = Format.kasprintf failwith fmt
 
-let sexp: _ data2 =
-  let open Sexplib0.Sexp in
-  let atom x = Atom x and list xs = List xs in
-  let m0 = variant 0 "Atom"
-  and m1 = variant 0 "List"
-  and k0 = V.K atom and k1 = V.K list in
-  { view = (fun s sx ->
-      V.(function Atom a -> A (k0, a, s) | List xs -> A (k1, xs, sx)),
-      (function Atom _ -> m0 | List _ -> m1))
-  ; schema = S.(fun s sx -> [A (K atom, s), m0; A (K list, sx), m1]) }
+type 'a e = 'a -> Sexplib0.Sexp.t
+type 'a d = Sexplib0.Sexp.t -> 'a
 
-module To = struct
+module Enc = struct
 
-  type 'a e = 'a -> Sexplib0.Sexp.t
   module G = Generic (struct type 'a q = 'a e end)
 
   open G
@@ -36,7 +27,7 @@ module To = struct
     let rec record: 'a. _ -> _ -> _ -> _ -> ('a, _, _) spine -> _ =
       fun v0 acc m i -> function
     | K _ -> acc
-    | A (s, a, f) -> record v0 (field m i (!:f a) :: acc) m (i - i) s
+    | A (s, a, f) -> record v0 (field m i (!:f a) :: acc) m (i - 1) s
     | R (s, a) -> record v0 (field m i (g_to_sexp v0 a) :: acc) m (i - 1) s in
     let m = meta v x in
     match spine v x, labels m, name m with
@@ -54,9 +45,8 @@ module Smap = Map.Make (struct
   let compare (a: string) b = compare a b
 end)
 
-module Of = struct
+module Dec = struct
 
-  type 'a d = Sexplib0.Sexp.t -> 'a
   module G = Generic (struct type 'a q = 'a d end)
 
   open G
@@ -68,17 +58,14 @@ module Of = struct
   let err_record_form () = failwith "expecting a list of record components"
   let err_missing_field = failwith "missing record element: %s"
   let err_duplicate_field = failwith "duplicate field: %s"
-  let err_extra_fields m map =
-    let pp ppf =
-      Smap.iter (fun f _ -> if not (has_label m f) then pf ppf " %s" f) in
-    failwith "extra fields:%a" pp map
-  let of_sexp_error exn sexp = match exn with
-  | Failure err ->
-      raise (Of_sexp_error (Failure ("Tpf_sexplib.g_of_sexp: " ^ err), sexp))
-  | _ -> raise (Of_sexp_error (exn, sexp))
-  let err_tag sexp = of_sexp_error (Failure "unexpected variant") sexp
+  let err_extra_fields meta =
+    let pp ppf l _ = if not (has_label meta l) then pf ppf " %s" l in
+    failwith "extra fields:%a" (fun ppf -> Smap.iter (pp ppf))
+  let of_sexp_error err sexp =
+    raise (Of_sexp_error (Failure ("Tpf_sexplib.g_of_sexp: " ^ err), sexp))
+  let err_tag sexp = of_sexp_error "unexpected variant" sexp
   let err_record_component =
-    of_sexp_error (Failure "bad record element: expecting (<name> <value>)")
+    of_sexp_error "bad record element: expecting (<name> <value>)"
 
   (* Anamorphisms have a couple of unrolled steps to shrink the closure
      chains. But adding too much costs time. *)
@@ -136,11 +123,11 @@ module Of = struct
     | A (s, a) -> go s (i - 1) (fun f map -> k (f (!:a (get_field m i map))) map)
     | R s -> go s (i - 1) (fun f map -> k (f (goto10 (get_field m i map))) map)
     in
-    let extract = go s (labels m - 1) (fun x _ -> x) in
+    let n = labels m in
+    let extract = go s (n - 1) (fun x _ -> x) in
     fun xs ->
       let map = field_map_of_sexp xs in
-      if Smap.cardinal map <= labels m then extract map
-      else err_extra_fields m map
+      if Smap.cardinal map <= n then extract map else err_extra_fields m map
 
   let g_of_sexp = function
   | [s, m] when name m = "" ->
@@ -148,7 +135,7 @@ module Of = struct
         try match sexp with
         | List sexps -> Lazy.force f sexps
         | _ -> err_record_form ()
-        with Failure _ as exn -> of_sexp_error exn sexp
+        with Failure err -> of_sexp_error err sexp
       and f = lazy (record goto10 m s) in
       goto10
   | ss ->
@@ -165,10 +152,22 @@ module Of = struct
         | List (Atom name :: sexp) ->
             Lazy.(force (Smap.find name (force map))) sexp
         | _ -> err_tagged_form ()
-        with | Failure _ as exn -> of_sexp_error exn sexp
+        with | Failure err -> of_sexp_error err sexp
              | Not_found -> err_tag sexp in
       goto10
 
   include G.P
   include Schema (struct type 'a r = 'a d let gfun = g_of_sexp end)
 end
+
+let data_sexp: _ data2 =
+  let open Sexplib0.Sexp in
+  let atom x = Atom x and list xs = List xs in
+  let m0 = variant 0 "Atom"
+  and m1 = variant 0 "List"
+  and k0 = V.K atom and k1 = V.K list in
+  { view = (fun s sx ->
+      V.(function Atom a -> A (k0, a, s) | List xs -> A (k1, xs, sx)),
+      (function Atom _ -> m0 | List _ -> m1))
+  ; schema = S.(fun s sx -> [A (K atom, s), m0; A (K list, sx), m1]) }
+

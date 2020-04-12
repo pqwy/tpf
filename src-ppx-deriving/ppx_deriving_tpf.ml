@@ -179,11 +179,11 @@ let str_of_type ~options:_ ~path:_ tdecl =
       let argvars = List.map (fun _ -> sym ()) args in
       let argrefs = List.map (Exp.ident % to_lid) argvars in
       let tyrefs = List.map tyref args in
-      let cons = defn "cons" @@
+      let cons = defn "_cons" @@
         fun_ argvars (ctor argrefs) in
-      let vk = defn "vk" @@ tpf_v_k cons
-      and sk = defn "sk" @@ tpf_s_k cons in
-      let meta = defn "meta" @@
+      let vk = defn "_vk" @@ tpf_v_k cons
+      and sk = defn "_sk" @@ tpf_s_k cons in
+      let meta = defn "_meta" @@
         tpf_variant ?labels (const_s name) (const_i i) in
       let mcase = Exp.case (pat (List.map (fun _ -> Pat.any ()) args)) meta
       and vcase =
@@ -227,9 +227,9 @@ let str_of_type ~options:_ ~path:_ tdecl =
     let vcases = List.map (fun (v, _, _) -> v) cases
     and mcases = List.map (fun (_, m, _) -> m) cases
     and scases = List.map (fun (_, _, s) -> s) cases in
-    let view = defn "view" @@
+    let view = defn "_view" @@
       fun_ tyvars Exp.(tuple [function_ vcases; function_ mcases]) in
-    let schema = defn "schema" @@
+    let schema = defn "_schema" @@
       fun_ tyvars (const_list scases) in
     let _ = defn ~gen:false (data_defn_name tdecl)
       Exp.(constraint_

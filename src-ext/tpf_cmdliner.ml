@@ -14,6 +14,7 @@ let err_not_singleton () =
 
 module G = Generic (struct type 'a q = 'a Arg.conv end)
 open G
+
 include G.P
 
 module Opt = struct
