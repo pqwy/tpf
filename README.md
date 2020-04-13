@@ -3,11 +3,11 @@
 %%VERSION%%
 
 Tagless/trivial polytypic functions (Tpf) is a library for datatype-generic
-programming in OCaml. It aims to be simple and idiomatic.
+programming in OCaml.
 
-**Generic** programming is all about not writing the same old `equal` again.
+*Generic* programming is all about not writing the same old `equal` again.
 
-**Datatype-generic** (or polytypic) programming is solving this at the language
+*Datatype-generic* (or polytypic) programming is solving this at the language
 level.
 
 Tpf allows you to write functions that work on a wide range of unrelated data
@@ -69,28 +69,26 @@ Tpf contains several optional libraries and sub-libraries:
 ## Using generic functions
 
 Equip a type with its *generic*:
-```
+```OCaml
 type ('a, 'b) tweedledum =
-| Tw0 of 'a * int
-| Tw1 of 'b
-[@@deriving tpf]
+  | Tw0 of 'a * int
+  | Tw1 of 'b
+  [@@deriving tpf]
 ```
 
 This derives `data_tweedledum`, the generic representation of `tweedledum`.
-That's the key to applying generic functions to `tweedledum`:
-```
-(* type 'a eq = 'a -> 'b -> bool
-   val eq_tweedledum: 'a eq -> 'b eq -> ('a, 'b) tweedledum eq *)
+This is the key to applying generic functions to `tweedledum`:
+```OCaml
+type 'a eq = 'a -> 'b -> bool
 
-let eq_tweedledum eq_a eq_b =
-  Tpf_std.Eq.data3 data_tweedledum (=) eq_a eq_b
+let eq_tweedledum : 'a eq -> 'b eq -> ('a, 'b) tweedledum eq =
+  fun eq_a eq_b = Tpf_std.Eq.data3 data_tweedledum (=) eq_a eq_b
 ```
-```
-(* type 'a fmt = Format.formatter -> 'a -> unit
-   val pp_tweedledum: 'a fmt -> 'b fmt -> ('a, 'b) tweedledum fmt *)
+```OCaml
+type 'a fmt = Format.formatter -> 'a -> unit
 
-let pp_tweedledum pp_a pp_b =
-  Tpf_fmt.data3 data_tweedledum Fmt.int pp_a pp_b
+let pp_tweedledum : 'a fmt -> 'b fmt -> ('a, 'b) tweedledum fmt =
+  fun pp_a pp_b -> Tpf_fmt.data3 data_tweedledum Fmt.int pp_a pp_b
 ```
 
 To *instantiate* a generic function at a given type, you need to supply its
@@ -98,7 +96,7 @@ To *instantiate* a generic function at a given type, you need to supply its
 what to do at these other types.
 
 You can also opt to drop the training wheels:
-```
+```OCaml
 let meta0 = Tpf.variant 0 "Tw0"
 let meta1 = Tpf.variant 1 "Tw1"
 let tw0 a x = Tw0 (a, x)
@@ -120,37 +118,39 @@ There are further examples of generics in [`Tpf_std`](src/tpf_std.ml).
 These come in two flavors: consumers and producers.
 
 Iterators, for instance, are consumers. Consumers work on a `Tpf.view`:
-```
+```OCaml
 module G = Tpf.Generic (struct type 'a q = 'a -> unit end)
 open Tpf
 open G
 
-(* val g_iter: ('a, G.p) view -> 'a -> unit *)
-
-let rec g_iter view x =
-  let rec go: 'a. ('a, _, _) V.spine -> unit = V.(function
-  | K _ -> ()
-  | A (s, a, f_a) -> go s; !:f_a a
-  | R (s, a) -> go s; g_iter view a) in
-  go (spine view x)
+let rec g_iter : ('a, G.p) view -> 'a -> unit =
+  fun view x ->
+    let rec go: 'a. ('a, _, _) V.spine -> unit =
+      V.(function
+      | K _ -> ()
+      | A (s, a, f_a) -> go s; !:f_a a
+      | R (s, a) -> go s; g_iter view a)
+    in
+    go (spine view x)
 ```
 
 While random generators are producers. Producers work on a `Tpf.schema`:
-```
+```OCaml
 let pick: 'a list -> 'a = ...
 
 module G = Generic (struct type 'a q = unit -> 'a end)
 open Tpf
 open G
 
-(* val g_random: ('a, G.p) schema -> unit -> 'a *)
-
-let rec g_random schema () =
-  let rec go: 'a. ('a, _, _) S.spine -> 'a = S.(function
-  | K f -> f
-  | A (s, f_a) -> go s G.(!:f_a ())
-  | R s -> go s (g_random schema ())) in
-  go (pick schema |> spine)
+let rec g_random : ('a, G.p) schema -> unit -> 'a =
+  fun schema () ->
+    let rec go: 'a. ('a, _, _) S.spine -> 'a =
+      S.(function
+      | K f -> f
+      | A (s, f_a) -> go s G.(!:f_a ())
+      | R s -> go s (g_random schema ()))
+    in
+    go (pick schema |> spine)
 ```
 
 There are further examples of generic functions in [`Tpf_std`](src/tpf_std.ml)
