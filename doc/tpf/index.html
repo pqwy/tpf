@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>index (tpf.index)</title><link rel="stylesheet" href="../odoc.css"/><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body><div class="content"><header><nav><a href="../index.html">Up</a> – tpf</nav></header><h1 id="tpf-—-tagless/trivial-polytypic-functions"><a href="#tpf-—-tagless/trivial-polytypic-functions" class="anchor"></a>Tpf — Tagless/Trivial polytypic functions</h1><p>Tpf is a simple and idiomatic library for datatype-generic programming in OCaml.</p><h2 id="api"><a href="#api" class="anchor"></a>API</h2><p>Tpf core.</p><ul class="modules"><li><a href="Tpf/index.html"><code>Tpf</code></a></li></ul><p>Standard generic types and functions.</p><ul class="modules"><li><a href="Tpf_std/index.html"><code>Tpf_std</code></a></li></ul><h2 id="quick_start"><a href="#quick_start" class="anchor"></a>Quick start</h2><h3 id="instantiating-generic-functions"><a href="#instantiating-generic-functions" class="anchor"></a>Instantiating generic functions</h3><p>To make use of Tpf, you always need to combine a generic function with generic <a href="Tpf/index.html#data"><span>data representation</span></a>.</p><p>Representations have an arity, which depends on the number of other types the type in question contains. For instance, <a href="Tpf_std/index.html#val-list"><code>Tpf_std.list</code></a> is <code>('a, 'a list) data1</code>. Its arity is 1, as lists only contain one other type.</p><p>To instantiate a function over type <code>t</code>, you need its <a href="Tpf/index.html#data"><span><code>data</code></span></a>, the generic function <a href="Tpf/module-type-Data/index.html"><span>entry-point</span></a> of the corresponding arity, and arity-many other functions to take care of inner types.</p><p>This creates a printer for <code>int</code> lists:</p><pre>let pp_int_list : int list Fmt.t =
+  Tpf_fmt.data1 Tpf_std.list Format.pp_print_int</pre><p>Pulling out the printer for contained type yields a polymorphic combinator:</p><pre>let pp_list : 'a Fmt.t -&gt; 'a list Fmt.t =
+  fun pp_v -&gt; Tpf_fmt.data1 Tpf_std.list pp_v</pre><p><a href="Tpf_std/index.html#val-result"><code>Tpf_std.result</code></a> is <code>('a, 'b, ('a, 'b) result) data2</code>:</p><pre>let pp_result : 'a Fmt.t -&gt; ('a, string) result Fmt.t =
+  fun pp_v -&gt; Tpf_fmt.data2 Tpf_std.result pp_v Format.pp_print_string</pre><p>The basic idea is that — in the absence of type-based dispatch — the user has to explicitly specify what happens when the generic function comes across other types inside and has to cross the type boundary. This is done by simply supplying the generic function with the functions to call at these types.</p><p>This is the mechanism that gives Tpf a flavour idiomatic to OCaml: as is usually the case with type-based combinatory libraries, it is the user's responsibility to parameterise higher-order functions corresponding to higher-kinded types. There are no additional dispatch schemes involved.</p><h3 id="equipping-types-with-generic-representation"><a href="#equipping-types-with-generic-representation" class="anchor"></a>Equipping types with generic representation</h3><p>To use a generic function on a type, you need its <a href="Tpf/index.html#data"><span>data</span></a>.</p><p>This can be automated with <code>ppx_deriving_tpf</code>:</p><pre>type 'a t = | X
+            | Y of string * 'a
+  [@@deriving tpf]</pre><p>Otherwise, you need to construct a pair of functions of arity <code>n</code> and pack them up in a <a href="Tpf/index.html#data"><span><code>data[n]</code></span></a> value.</p><pre>type 'a t = | X
+            | Y of string * 'a
+
+open Tpf
+
+let cons_y string a = Y (string, a)
+
+let m0 = variant 0 &quot;X&quot;
+let m1 = variant 1 &quot;Y&quot;
+
+let t: (string, 'a, 'a t) data2 =
+  { view = (fun f_string f_a -&gt;
+      (function
+       | X -&gt; V.K X
+       | Y (string, a) -&gt; V.(A (A (K cons_y, string, f_string), a, f_a))),
+      (function X -&gt; m0 | Y _ -&gt; m1))
+  ; schema = fun f_string f_a -&gt;
+      [ S.K X, m0;
+        S.(A (A (K cons_y, f_string), f_a)), m1 ]
+  }</pre><p>Both functions encode values as an AST of (curried) constructor applications; the <a href="Tpf/index.html#type-view"><span>view</span></a> function unpacks the value into a <a href="Tpf/V/index.html#type-spine"><span>view spine</span></a>, while the <a href="Tpf/index.html#type-schema"><span>schema</span></a> function constructs one <a href="Tpf/S/index.html#type-spine"><span>schema spine</span></a> for each constructor in the type.</p><p>Schematically,</p><pre>Y (&quot;foo&quot;, 13)</pre><p>has the structure</p><pre>    @
+   / \
+  @  13
+ / \
+Y  &quot;foo&quot;</pre><p>so the individual value is encoded as the view spine</p><pre>A ─┬─ A ─┬─ K ─ (fun s n -&gt; Y (s, n))
+   │     ├─ &quot;foo&quot;
+   │     ╰─ f_string
+   ├─ 13
+   ╰─ f_a</pre><p>while the type itself is encoded as schema spines</p><pre>K ─ X
+
+A ─┬─ A ─┬─ K ─ (fun s n -&gt; Y (s, n))
+   │     ╰─ f_string
+   ╰─ f_a</pre><p>Spines have a <a href="Tpf/index.html#type-meta"><span>meta block</span></a> attached, which provides additional meta data about the constructor.</p><h3 id="writing-generic-functions"><a href="#writing-generic-functions" class="anchor"></a>Writing generic functions</h3><p>These come in two flavours: consumers and producers.</p><p>Iterators, for instance, are consumers. Consumers work on a <a href="Tpf/index.html#type-view"><span><code>view</code></span></a>, and discover the structure of a single value by traversing the <a href="Tpf/V/index.html#type-spine"><span>view spine</span></a>:</p><pre>open Tpf
+module G = Tpf.Generic (struct type 'a q = 'a -&gt; unit end)
+
+let rec g_iter : ('a, G.p) view -&gt; 'a -&gt; unit =
+  fun view x -&gt;
+    let rec go: 'a. ('a, _, _) V.spine -&gt; unit =
+      function
+      | V.K _ -&gt; ()
+      | V.A (s, a, f_a) -&gt; go s; G.(!:)f_a a
+      | V.R (s, a) -&gt; go s; g_iter view a
+    in
+    go (spine view x)</pre><p>While random generators are producers. Producers work on a <a href="Tpf/index.html#type-schema"><span><code>schema</code></span></a>, and discover the structure of each possible constructor by traversing the <a href="Tpf/S/index.html#type-spine"><span>schema spine</span></a>:</p><pre>let sample : 'a list -&gt; 'a =
+  fun xs -&gt; List.(nth xs (length xs |&gt; Random.int))
+
+open Tpf
+module G = Generic (struct type 'a q = unit -&gt; 'a end)
+
+let rec g_random : ('a, G.p) schema -&gt; unit -&gt; 'a =
+  fun schema () -&gt;
+    let rec go: 'a. ('a, _, _) S.spine -&gt; 'a =
+      function
+      | S.K f -&gt; f
+      | S.A (s, f_a) -&gt; go s G.(!:f_a ())
+      | S.R s -&gt; go s (g_random schema ())
+    in
+    go (sample schema |&gt; spine)</pre><p>A little complication arises from the fact that spines must be able to contain any sort of function for the corresponding types. In other words, spines must exhibit higher-kinded polymorphism.</p><p>We encode this using the <a href="https://github.com/ocamllabs/higher">higher</a> trick. This is why each generic function needs to instantiate <a href="Tpf/Generic/index.html"><code>Tpf.Generic</code></a>: it provides the <a href="Tpf/Generic/index.html#type-p"><span>proxy type</span></a> for that particular function, and the corresponding injection and projection.</p><p>The generic function itself will use projection, to fetch the inner <em>query</em> functions; and the caller will use injection, to pack them into spines.</p><p>To simplify usage, we can top off the definitions with</p><pre>include G.View (struct
+  type 'a r = 'a -&gt; unit
+  let gfun = g_iter
+end)</pre><p>or</p><pre>include G.Schema (struct
+  type 'a r = unit -&gt; 'a
+  let gfun = g_random
+end)</pre><p>which will create a family of <a href="Tpf/index.html#data"><span><code>data[n]</code></span></a> functions, like the ones we have been using at the beginning:</p><pre>let iter_list : ('a -&gt; unit) -&gt; 'a list -&gt; unit =
+  fun i_v = data1 Tpf_std.list i_v</pre><pre>let random_result : (unit -&gt; 'a) -&gt; (unit -&gt; 'e) -&gt; unit -&gt; ('a, 'e) result =
+  fun r_a r_e -&gt; data2 Tpf_std.result r_a r_e</pre></div></body></html>

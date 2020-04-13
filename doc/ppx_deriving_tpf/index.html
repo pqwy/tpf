@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>index (ppx_deriving_tpf.index)</title><link rel="stylesheet" href="../odoc.css"/><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body><div class="content"><header><nav><a href="../index.html">Up</a> – ppx_deriving_tpf</nav></header><h1 id="ppx-deriving-tpf"><a href="#ppx-deriving-tpf" class="anchor"></a>PPX deriving Tpf</h1><p>This is a <a href="https://github.com/ocaml-ppx/ppx_deriving">Ppx_deriving</a> plugin, deriving Tpf <code>data[n]</code> generic representations.</p><p>If the type is called <code>t</code>, derived representation is called <code>data</code>. Otherwise, it is called <code>data_TYPENAME</code>.</p><p>For example:</p><pre>type 'a t =
+  | K1 of int
+  | K2 of 'a
+  [@@deriving tpf]
+
+type ('a, 'b) tree =
+  | Leaf of 'a
+  | Node of ('a, 'b) tree * 'b * ('a, 'b) tree
+  [@@deriving tpf]</pre><p>yields</p><pre>val data : (int, 'a, 'a t) Tpf.data2
+val data_tree : ('a, 'b, ('a, 'b) tree) Tpf.data2</pre></div></body></html>
