@@ -12,6 +12,7 @@
 open Tpf
 open QCheck
 
+(** {1 Generic [arbitrary]} *)
 include P with type 'a q := 'a arbitrary
 val g_arb : ('a, p) view -> ('a, p) schema -> ?base:'a -> int -> 'a arbitrary
 (** [g_arb view schema ~base size] is the {!arbitrary} instance over ['a].
@@ -19,6 +20,7 @@ val g_arb : ('a, p) view -> ('a, p) schema -> ?base:'a -> int -> 'a arbitrary
     [base] and [size] are used by {!Tpf_std.Random.g_gen} to bound the recursion
     depth. *)
 
+(** {1 [data] interface} *)
 include Data
   with type 'a q := 'a arbitrary
   and type 'a r := ?base:'a -> int -> 'a arbitrary

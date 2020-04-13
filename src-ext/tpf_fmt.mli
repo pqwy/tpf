@@ -1,9 +1,13 @@
 (* Copyright (c) 2019 David Kaloper Meršinjak. All rights reserved.
    See LICENSE.md. *)
 
-(** Generic printers *)
+(** Generic printers.
+
+    This modules depends on [fmt]. *)
 
 open Tpf
+
+(** {1 Generic printer} *)
 
 type sum = string -> unit Fmt.t list Fmt.t
 (** [sum name args] formats a variant with constructor [name] and
@@ -22,6 +26,8 @@ val g_pp : ?sum:sum -> ?record:record -> ('a, p) view -> 'a Fmt.t
 
     [sum] controls the formatting of plain variants, [record] of records.
     Defaults match the way toplevel prints values. *)
+
+(** {1 [data] interface} *)
 
 (* Note - this blaaargh can be replaced by including
    [Data with type 'a r := ?sum -> ?record -> 'a Fmt.t] but we pull the optional
@@ -61,10 +67,3 @@ val data9 : ?sum:sum -> ?record:record ->
             ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'j) data9 ->
             'a Fmt.t -> 'b Fmt.t -> 'c Fmt.t -> 'd Fmt.t -> 'e Fmt.t ->
             'f Fmt.t -> 'g Fmt.t -> 'h Fmt.t -> 'i Fmt.t -> 'j Fmt.t
-
-(*include P with type 'a q := 'a Fmt.t *)
-(*val g_pp: ('a, p) Tpf.view -> 'a Fmt.t *)
-(*(1** [g_pp v ppf x] pretty-prints [x], viewed by [v], on [ppf], mimicking the *)
-(*    toplevel printer. *1) *)
-
-(*include Data with type 'a q := 'a Fmt.t and type 'a r := 'a Fmt.t *)

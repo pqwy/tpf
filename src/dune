@@ -3,3 +3,7 @@
   (modules tpf tpf_std)
   (synopsis "Minimalist datatype-generic programming")
   (wrapped false))
+
+(documentation
+  (package tpf)
+  (mld_files index))

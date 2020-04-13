@@ -8,8 +8,8 @@ maintainer:   "David Kaloper Meršinjak <dk505@cam.ac.uk>"
 license:      "ISC"
 synopsis:     "Minimalist datatype-generic programming"
 description:
-"Tagless/trivial polytypic functions (Tpf) is a library for datatype-generic
-programming in OCaml. It aims to be simple and idiomatic.
+"Tagless/trivial polytypic functions (Tpf) is a simple and idiomatic library for
+datatype-generic programming in OCaml.
 
 Tpf allows you to write functions that work on a wide range of unrelated data
 types. Such functions require only the base language, need no runtime, and

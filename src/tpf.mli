@@ -62,14 +62,14 @@ type ('a, +'q) view = ('a -> ('a, 'a, 'q) V.spine) * ('a -> meta)
 (** Generic representation for consumer functions.
     It can {e view} a value as a {!V.spine} or {!meta}.
 
-    [view] is equivalent to [gfoldl] in {e SYB}. *)
+    ([view] is equivalent to [gfoldl] in {e SYB}.) *)
 
 type ('a, +'q) schema = (('a, 'a, 'q) S.spine * meta) list
 (** Generic representation for producer functions.
     It encodes the set of constructors of a type.
 
 
-    [schema] is equivalent to [gunfold] in {e SYB}. *)
+    ([schema] is equivalent to [gunfold] in {e SYB}.) *)
 
 val spine : 'a * 'b -> 'a
 (** [spine] is [fst]. Spine is always first. *)
@@ -111,7 +111,7 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) app9 =
     Generic functions should export a [data]-based interface, together with a
     naked function that operates directly on a {!view} or {!schema}.
 
-    [data] is equivalent to [Data] in {e SYB}. *)
+    ([data] is equivalent to [Data] in {e SYB}.) *)
 
 type 'x data0 =
   { view   : 'q. ('x, 'q) view

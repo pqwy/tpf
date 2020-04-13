@@ -6,17 +6,15 @@
     Generic {{!Enc}injections} / {{!Dec}projections} between a type and
     {{: https://github.com/janestreet/sexplib0}Sexplib}'s {! Sexplib0.Sexp.t}.
 
-    Types are mapped to S-expressions in the same way sexplib or its PPX deriver
-    do it. *)
+    Types are mapped to S-expressions in Sexplib-compatible way. *)
 
 open Tpf
 open Sexplib0
 
-type 'a e = 'a -> Sexp.t
-(** Sexp encoders. *)
+(** {1 Encoders} *)
 
-type 'a d = Sexp.t -> 'a
-(** Sexp decoders. *)
+type 'a e = 'a -> Sexp.t
+(** Encoder type. *)
 
 (** Generic Sexp encoder. *)
 module Enc : sig
@@ -24,6 +22,11 @@ module Enc : sig
   val g_to_sexp : ('a, p) view -> 'a e
   include Data with type 'a q := 'a e and type 'a r := 'a e
 end
+
+(** {1 Decoders} *)
+
+type 'a d = Sexp.t -> 'a
+(** Decoder type. *)
 
 (** Generic Sexp decoder. *)
 module Dec : sig
@@ -35,5 +38,5 @@ end
 (** {1 Sexp as generic objects} *)
 
 val data_sexp: (string, Sexp.t list, Sexp.t) data2
-(** Representation of {! Sexplib0.Sexp.t} itself. *)
+(** Generic representation of {! Sexplib0.Sexp.t} itself. *)
 

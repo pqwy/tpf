@@ -12,7 +12,7 @@ val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
 
 (** {1 Stdlib types}
 
-    {{!data0}[data]} representations of some common types. *)
+    {{!Tpf.data0}[data]} representations of some common types. *)
 
 val unit : unit data0
 val pair : ('a, 'b, 'a * 'b) data2
@@ -124,3 +124,19 @@ module AppS (A: AppS) : sig
   val gfun : ('a, p) schema -> 'a A.t
   include Data with type 'a q := 'a A.t and type 'a r := 'a A.t
 end
+
+(** {1:qmap Query maps}
+
+    These convert ['a t1] (represented by [('a, 'p) app]) generics into ['a t2]
+    (represented by [('a, 'q) app]) generics. *)
+
+type ('p, 'q) nat = { nat: 'a. ('a, 'p) app -> ('a, 'q) app }
+(** Essentially the object part of a natural transformation. *)
+
+val vmap: ('p, 'q) nat -> ('a, 'p) view -> ('a, 'q) view
+(** [vmap nat v] is the view with the same structure as [v], but with queries
+    in [q]. *)
+
+val smap : ('p, 'q) nat -> ('a, 'p) schema -> ('a, 'q) schema
+(** [smap nat s] is the schema with the same structure as [s], but with
+    queries in [q]. *)

@@ -11,50 +11,50 @@ let fix f =
 
 (* Stdlib generics *)
 
-let m0 = variant 0 "()"
-let k0 = V.K ()
 let unit: _ data0 =
+  let m0 = variant 0 "()" in
+  let k0 = V.K () in
   { view = (fun () -> k0), (fun () -> m0)
   ; schema = S.[ K (), m0 ] }
 
-let cons a b = a, b
-let k0 = V.K cons
 let m0 = variant 0 "(,)"
 let pair: _ data2 =
+  let cons a b = a, b in
+  let k0 = V.K cons in
   { view = (fun a b -> V.(fun (x, y) -> A (A (k0, x, a), y, b)),
            (fun _ -> m0))
   ; schema = fun a b -> S.[ A (A (K cons, a), b), m0 ] }
 
-let cons a b c = a, b, c
-let k0 = V.K cons
 let m0 = variant 0 "(,,)"
 let triple: _ data3 =
+  let cons a b c = a, b, c in
+  let k0 = V.K cons in
   { view = (fun a b c ->
       V.(fun (x, y, z) -> A (A (A (k0, x, a), y, b), z, c)),
       (fun _ -> m0))
   ; schema = S.(fun a b c -> [A (A (A (K cons, a), b), c), m0]) }
 
-let cons a b c d = a, b, c, d
-let k0 = V.K cons
 let m0 = variant 0 "(,,,)"
 let quadruple: _ data4 =
+  let cons a b c d = a, b, c, d in
+  let k0 = V.K cons in
   { view = (fun a b c d ->
       V.(fun (x, y, z, w) -> A (A (A (A (k0, x, a), y, b), z, c), w, d)),
       (fun _ -> m0))
   ; schema = S.(fun a b c d -> [A (A (A (A (K cons, a), b), c), d), m0]) }
 
-let k0 = V.K [] and k1 = V.K List.cons
 let m0 = variant 0 "[]" and m1 = variant 1 "(::)"
 let list: _ data1 =
+  let k0 = V.K [] and k1 = V.K List.cons in
   { view = (fun a ->
       V.(function [] -> k0 | x::xs -> R (A (k1, x, a), xs)),
       (function [] -> m0 | _ -> m1))
   ; schema = S.(fun a -> [K [], m0; R (A (K List.cons, a)), m1]) }
 
-let scons x xs () = Seq.Cons (x, xs)
-let k0 = V.K Seq.empty and k1 = V.K scons
 let m0 = variant 0 "Nil" and m1 = variant 1 "Cons"
 let seq: _ data1 =
+  let scons x xs () = Seq.Cons (x, xs) in
+  let k0 = V.K Seq.empty and k1 = V.K scons in
   { view = Seq.(fun a ->
       V.(fun s -> match s () with
         | Cons (x, s) -> R (A (k1, x, a), s)
@@ -62,22 +62,43 @@ let seq: _ data1 =
       (fun s -> match s () with Nil -> m0 | _ -> m1))
   ; schema = S.(fun a -> [K Seq.empty, m0; R (A (K scons, a)), m1]) }
 
-let some x = Some x
-let k0 = V.K None and k1 = V.K some
 let m0 = variant 0 "None" and m1 = variant 1 "Some"
 let option: _ data1 =
+  let some x = Some x in
+  let k0 = V.K None and k1 = V.K some in
   { view = (fun a -> V.(function Some x -> A (k1, x, a) | _ -> k0),
            (function None -> m0 | _ -> m1))
   ; schema = S.(fun a -> [K None, m0; A (K some, a), m1]) }
 
-let ok x = Ok x and error x = Error x
-let k0 = V.K ok and k1 = V.K error
 let m0 = variant 0 "Ok" and m1 = variant 1 "Error"
 let result: _ data2 =
+  let ok x = Ok x and error x = Error x in
+  let k0 = V.K ok and k1 = V.K error in
   { view = (fun a b ->
       V.(function Ok x -> A (k0, x, a) | Error y -> A (k1, y, b)),
       (function Ok _ -> m0 | _ -> m1))
   ; schema = S.(fun a b -> [A (K ok, a), m0; A (K error, b), m1]) }
+
+(* Natural transformations. *)
+
+type ('p, 'q) nat = { nat: 'a. ('a, 'p) app -> ('a, 'q) app }
+
+let vmap {nat} =
+  let open V in
+  let rec go: 'a. ('a, _, _) spine -> ('a, _, _) spine = function
+  | K k -> K k
+  | A (s, a, f) -> A (go s, a, nat f)
+  | R (s, a) -> R (go s, a) in
+  (fun (spine, meta) -> (fun x -> go (spine x)), meta)
+
+let smap {nat} =
+  let open S in
+  let rec go: 'a. ('a, _, _) spine -> ('a, _, _) spine = function
+  | K k -> K k
+  | A (s, a) -> A (go s, nat a)
+  | R s -> R (go s) in
+  List.map (fun (spine, meta) -> go spine, meta)
+
 
 (* The Upside-down *)
 

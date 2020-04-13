@@ -17,8 +17,7 @@ type json =
   | `List of json list | `Assoc of (string * json) list ]
 (** JSON trees.
 
-    {e Note.} This is {! Yojson.Basic.t}. Hence the rather arbitrary
-    [Int] / [Float] split. *)
+    {e Note.} This is {! Yojson.Basic.t}. *)
 
 type error = [`Msg of string]
 (** Decoder error. *)
@@ -26,11 +25,10 @@ type error = [`Msg of string]
 val pp_error : Format.formatter -> error -> unit
 (** [pp_error ppf e] pretty-prints [e] on [ppf]. *)
 
-type 'a e = 'a -> json
-(** JSON encoders. *)
+(** {1 Encoders} *)
 
-type 'a d = json -> ('a, error) result
-(** JSON decoders. *)
+type 'a e = 'a -> json
+(** Encoder type. *)
 
 (** Generic JSON encoder.
 
@@ -40,6 +38,8 @@ type 'a d = json -> ('a, error) result
     The representation of variants is determined by the {{!sum}[~sum]} argument
     (default {!arr}). *)
 module Enc : sig
+
+  (** {1 Generic function} *)
 
   include P with type 'a q := 'a e
 
@@ -56,6 +56,8 @@ module Enc : sig
       [tag] defaults to ["tag"] and [values] defaults to ["values"]. *)
 
   val g_to_json : ?sum:sum -> ('a, p) view -> 'a e
+
+  (** {1 [data] interface} *)
 
   val data0 : ?sum:sum -> 'x data0 ->
               'x e
@@ -79,6 +81,11 @@ module Enc : sig
               'a e -> 'b e -> 'c e -> 'd e -> 'e e -> 'f e -> 'g e -> 'h e -> 'i e -> 'x e
 end
 
+(** {1 Decoders} *)
+
+type 'a d = json -> ('a, error) result
+(** Decoder type. *)
+
 (** Generic JSON decoder.
 
     Records are expected as JSON objects, and constant constructors are expected
@@ -87,6 +94,8 @@ end
     The representation of variants is determined by the {{!sum}[~sum]} argument
     (default {!arr}). *)
 module Dec: sig
+
+  (** {1 Generic function} *)
 
   include P with type 'a q := 'a d
 
@@ -103,8 +112,9 @@ module Dec: sig
 
       [tag] defaults to ["tag"] and [values] defaults to ["values"]. *)
 
-
   val g_of_json : ?sum:sum -> ('a, p) schema -> 'a d
+
+  (** {1 [data] interface} *)
 
   val data0 : ?sum:sum -> 'x data0 ->
               'x d

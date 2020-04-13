@@ -51,3 +51,7 @@
   (modules tpf_json)
   (optional)
   (libraries tpf))
+
+(documentation
+  (package tpf-ext)
+  (mld_files index))
