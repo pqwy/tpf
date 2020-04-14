@@ -5,3 +5,7 @@
  (modules ppx_deriving_tpf)
  (libraries ppx_deriving.api)
  (kind ppx_deriver))
+
+(documentation
+  (package ppx_deriving_tpf)
+  (mld_files index))

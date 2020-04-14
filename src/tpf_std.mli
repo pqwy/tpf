@@ -12,7 +12,7 @@ val fix: (('a -> 'b) -> ('a -> 'b)) -> ('a -> 'b)
 
 (** {1 Stdlib types}
 
-    {{!Tpf.data0}[data]} representations of some common types. *)
+    {{!Tpf.data}[data]} representations of some common types. *)
 
 val unit : unit data0
 val pair : ('a, 'b, 'a * 'b) data2

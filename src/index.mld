@@ -17,18 +17,16 @@ Standard generic types and functions.
 {2 Instantiating generic functions}
 
 To make use of Tpf, you always need to combine a generic function with generic
-data description.
+{{!Tpf.data}data representation}.
 
-Each {{! Tpf.data0}[data]} has an arity, which depends on the number of
-other types the type in question contains.
+Representations have an arity, which depends on the number of other types the type
+in question contains. For instance, {!Tpf_std.list} is [('a, 'a list) data1].
+Its arity is 1, as lists only contain one other type.
 
-{!Tpf_std.list} is [('a, 'a list) data1]. Its arity is 1, as it only contains
-one other type.
-
-To instantiate a function over a type [t], you need its {{!Tpf.data0}[data]}
-representation, the generic function of the
-{{!Tpf.Data.data0}corresponding arity}, and arity-many other functions to take
-care of contained values.
+To instantiate a function over type [t], you need its {{!Tpf.data}[data]}, the
+generic function {{!Tpf.Data}entry-point} of the
+corresponding arity, and arity-many other functions to take
+care of inner types.
 
 This creates a printer for [int] lists:
 
@@ -44,7 +42,7 @@ let pp_list : 'a Fmt.t -> 'a list Fmt.t =
   fun pp_v -> Tpf_fmt.data1 Tpf_std.list pp_v
 v}
 
-{!Tpf_std.result} is [('a, 'b, ('a, 'b) result) data2]. Its arity is 2.
+{!Tpf_std.result} is [('a, 'b, ('a, 'b) result) data2]:
 
 {v
 let pp_result : 'a Fmt.t -> ('a, string) result Fmt.t =
@@ -52,19 +50,20 @@ let pp_result : 'a Fmt.t -> ('a, string) result Fmt.t =
 v}
 
 The basic idea is that — in the absence of type-based dispatch — the user has to
-explicitly specify what happens when the generic function discovers other types
-inside and crosses the type boundary. This is done by simply supplying the
-generic function (or more precisely, {{! Tpf.view}view} or the
-{{!Tpf.schema}schema}) with the functions to call at these types.
+explicitly specify what happens when the generic function comes across other
+types inside and has to cross the type boundary. This is done by simply
+supplying the generic function with the functions to call at these types.
 
-This is mechanism that gives Tpf a flavour idiomatic to OCaml: as is usually the
-case with type-based combinatory libraries, it is the user's responsibility to
-parameterise higher-order functions corresponding to higher-kinded types. There
-are no additional dispatch mechanisms involved.
+This is the mechanism that gives Tpf a flavour idiomatic to OCaml: as is usually
+the case with type-based combinatory libraries, it is the user's responsibility
+to parameterise higher-order functions corresponding to higher-kinded types.
+There are no additional dispatch schemes involved.
 
 {2 Equipping types with generic representation}
 
-When using [pp_deriving_tpf], this can be automated:
+To use a generic function on a type, you need its {{!Tpf.data}data}.
+
+This can be automated with [ppx_deriving_tpf]:
 
 {v
 type 'a t = | X
@@ -73,7 +72,7 @@ type 'a t = | X
 v}
 
 Otherwise, you need to construct a pair of functions of arity [n] and pack them
-up in a {{! Tpf.data0}[data_n]} value.
+up in a {{!Tpf.data}[data[n]]} value.
 
 {v
 type 'a t = | X
@@ -88,13 +87,13 @@ let m1 = variant 1 "Y"
 
 let t: (string, 'a, 'a t) data2 =
   { view = (fun f_string f_a ->
-      V.(function
-         | X -> K X
-         | Y (string, a) -> A (A (K cons_y, string, f_string), a, f_a)),
+      (function
+       | X -> V.K X
+       | Y (string, a) -> V.(A (A (K cons_y, string, f_string), a, f_a))),
       (function X -> m0 | Y _ -> m1))
-  ; schema = S.(fun f_string f_a ->
-      [ K X, m0;
-        A (A (K cons_y, f_string), f_a), m1 ])
+  ; schema = fun f_string f_a ->
+      [ S.K X, m0;
+        S.(A (A (K cons_y, f_string), f_a)), m1 ]
   }
 v}
 
@@ -119,27 +118,27 @@ has the structure
 Y  "foo"
 v}
 
-so the individual value is encoded in the view spine
+so the individual value is encoded as the view spine
 
 {v
-A - A - K - (fun s x -> Y (s, x))
-      - "foo"
-      - f1
-  - 13
-  - f2
+A ─┬─ A ─┬─ K ─ (fun s n -> Y (s, n))
+   │     ├─ "foo"
+   │     ╰─ f_string
+   ├─ 13
+   ╰─ f_a
 v}
 
-while the type itself is encoded in the schema spines
+while the type itself is encoded as schema spines
 
 {v
-K - X
+K ─ X
 
-A - A - K - (fun s x -> Y (s, x))
-      - f1
-  - f2
+A ─┬─ A ─┬─ K ─ (fun s n -> Y (s, n))
+   │     ╰─ f_string
+   ╰─ f_a
 v}
 
-These have a {{! Tpf.meta}meta block} attached, which provides additional meta
+Spines have a {{! Tpf.meta}meta block} attached, which provides additional meta
 data about the constructor.
 
 {2 Writing generic functions}
@@ -157,10 +156,10 @@ module G = Tpf.Generic (struct type 'a q = 'a -> unit end)
 let rec g_iter : ('a, G.p) view -> 'a -> unit =
   fun view x ->
     let rec go: 'a. ('a, _, _) V.spine -> unit =
-      V.(function
-      | K _ -> ()
-      | A (s, a, f_a) -> go s; G.(!:)f_a a
-      | R (s, a) -> go s; g_iter view a)
+      function
+      | V.K _ -> ()
+      | V.A (s, a, f_a) -> go s; G.(!:)f_a a
+      | V.R (s, a) -> go s; g_iter view a
     in
     go (spine view x)
 v}
@@ -170,7 +169,8 @@ While random generators are producers. Producers work on a
 constructor by traversing the {{! Tpf.S.spine}schema spine}:
 
 {v
-let sample : 'a list -> 'a = ...
+let sample : 'a list -> 'a =
+  fun xs -> List.(nth xs (length xs |> Random.int))
 
 open Tpf
 module G = Generic (struct type 'a q = unit -> 'a end)
@@ -178,10 +178,10 @@ module G = Generic (struct type 'a q = unit -> 'a end)
 let rec g_random : ('a, G.p) schema -> unit -> 'a =
   fun schema () ->
     let rec go: 'a. ('a, _, _) S.spine -> 'a =
-      S.(function
-      | K f -> f
-      | A (s, f_a) -> go s G.(!:f_a ())
-      | R s -> go s (g_random schema ()))
+      function
+      | S.K f -> f
+      | S.A (s, f_a) -> go s G.(!:f_a ())
+      | S.R s -> go s (g_random schema ())
     in
     go (sample schema |> spine)
 v}
@@ -190,7 +190,7 @@ A little complication arises from the fact that spines must be able to contain
 any sort of function for the corresponding types. In other words, spines must
 exhibit higher-kinded polymorphism.
 
-We encode this using the {{: https://github.com/ocamllabs/higher}Higher} trick.
+We encode this using the {{: https://github.com/ocamllabs/higher}higher} trick.
 This is why each generic function needs to instantiate {! Tpf.Generic}: it
 provides the {{! Tpf.Generic.p}proxy type} for that particular function, and the
 corresponding injection and projection.
@@ -216,5 +216,15 @@ include G.Schema (struct
 end)
 v}
 
-which will create a family of [data_n] functions, like the ones we have been
-using at the beginning.
+which will create a family of {{!Tpf.data}[data[n]]} functions, like the ones we
+have been using at the beginning:
+
+{v
+let iter_list : ('a -> unit) -> 'a list -> unit =
+  fun i_v = data1 Tpf_std.list i_v
+v}
+
+{v
+let random_result : (unit -> 'a) -> (unit -> 'e) -> unit -> ('a, 'e) result =
+  fun r_a r_e -> data2 Tpf_std.result r_a r_e
+v}

@@ -1,0 +1,28 @@
+{0 PPX deriving Tpf}
+
+This is a {{:https://github.com/ocaml-ppx/ppx_deriving}Ppx_deriving} plugin,
+deriving Tpf [data[n]] generic representations.
+
+If the type is called [t], derived representation is called [data]. Otherwise,
+it is called [data_TYPENAME].
+
+For example:
+
+{v
+type 'a t =
+  | K1 of int
+  | K2 of 'a
+  [@@deriving tpf]
+
+type ('a, 'b) tree =
+  | Leaf of 'a
+  | Node of ('a, 'b) tree * 'b * ('a, 'b) tree
+  [@@deriving tpf]
+v}
+
+yields
+
+{v
+val data : (int, 'a, 'a t) Tpf.data2
+val data_tree : ('a, 'b, ('a, 'b) tree) Tpf.data2
+v}

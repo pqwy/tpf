@@ -6,17 +6,21 @@
 (** {1:over Overview:}
 
 {ul
-{- {!V}, {!S} — View and Schema spines.}
-{- {!view}, {!schema} and {!meta}.}
-{- {!data0} .. {!data9} — package up [view * schema].}
-{- {!P}, {!Data} — signatures to ease exporting generic functions.}
-{- {!Generic} —  start here when writing a generic function.}
-{- {{!metaf}Metablock helpers}.}}
+{- {{!core}Core} only contains types:
+   {ul
+   {- {!V} and {!S} — View and Schema spines.}
+   {- {!view} and {!schema} — View and Schema functions.}
+   {- {!meta} — Constructor meta data.}}}
+{- {{!data}[data[n]]} is the interface to types.}
+{- {!Generic} provides support for writing generic functions.}
+{- {!P}, {!Data} are signatures to ease exporting generic functions.}}
 *)
 
 (** {1:core The Core} *)
 
 type (+'a, +'f) app
+(** Type representing type application of [f] to [a] in the style of {{:
+    https://github.com/ocamllabs/higher}higher}. *)
 
 (* A {e spine} is a typed sequence of one-step constructor applications.
    Two types of spines, {{!V}view} and {{!S}schema}, are at the heart of
@@ -62,14 +66,14 @@ type ('a, +'q) view = ('a -> ('a, 'a, 'q) V.spine) * ('a -> meta)
 (** Generic representation for consumer functions.
     It can {e view} a value as a {!V.spine} or {!meta}.
 
-    ([view] is equivalent to [gfoldl] in {e SYB}.) *)
+    This [gfoldl] in {e SYB}. *)
 
 type ('a, +'q) schema = (('a, 'a, 'q) S.spine * meta) list
 (** Generic representation for producer functions.
     It encodes the set of constructors of a type.
 
 
-    ([schema] is equivalent to [gunfold] in {e SYB}.) *)
+    This is [gunfold] in {e SYB}. *)
 
 val spine : 'a * 'b -> 'a
 (** [spine] is [fst]. Spine is always first. *)
@@ -77,10 +81,10 @@ val spine : 'a * 'b -> 'a
 val meta : 'a * 'b -> 'b
 (** [meta] is [snd]. Meta block is always second. *)
 
-(** {1:data Data} *)
+(** {2:appn App} *)
 
-(** [(..., 'q, 'res) app[n]] is just an alias for an [n]-ary function
-    from [(_, 'q) app] to ['res]. *)
+(** [(t1, ..., q, res) app[n]] is an alias for [n]-ary functions
+    [(t1, q) app -> ... -> res]. *)
 
 type ('q, 'res) app0 = 'res
 type ('a, 'q, 'res) app1 =
@@ -102,16 +106,16 @@ type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'q, 'res) app8 =
 type ('a, 'b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) app9 =
   ('a, 'q) app -> ('b, 'c, 'd, 'e, 'f, 'g, 'h, 'i, 'q, 'res) app8
 
-(** [data] packages up the {!view} and {!schema} for a single type which
+(** {1:data Data} *)
+
+(** [data[n]] packages up the {!view} and {!schema} for a single type which
     contains [n] other types. This is the easiest generic representation to
     handle, but it is not necessary.
 
-    Generically representable types should export their [data] value.
+    Generically representable types should export their [data].
 
     Generic functions should export a [data]-based interface, together with a
-    naked function that operates directly on a {!view} or {!schema}.
-
-    ([data] is equivalent to [Data] in {e SYB}.) *)
+    naked function that operates directly on a {!view} or {!schema}. *)
 
 type 'x data0 =
   { view   : 'q. ('x, 'q) view
@@ -161,23 +165,21 @@ module type P = sig
   (** Injection. *)
 end
 
-(** Packages up {{!data0}[data]}-based entry points to a generic function.
-
-    [q] is the {e query} that we need at each type that we encounter.
-
-    [r] is the function's result.
-
-    [q] and [r] are not constrained to be the same, but they often are. *)
+(** Packages up {{!data}data}-based entry points to a generic function. *)
 module type Data = sig
 
   type 'a q
-  (** What we need at each type. *)
+  (** The {e query} type.
+
+      This is what we need at each inner type that we encounter. *)
 
   type 'a r
-  (** What we provide, in return. *)
+  (** The overall {e result} type.
+
+      It's often the same as {!q}, but it doesn't have to be. *)
 
   (** The functions [data[n]] are variants of the same generic function,
-      operating on the corresponding [data] types. *)
+      operating on the corresponding {{!Tpf.data}data} representations: *)
 
   val data0 : 'x data0 ->
               'x r
@@ -233,7 +235,7 @@ val f2 : ('a, 'b, 'x) data2 -> 'a Q.q -> 'b Q.q -> ...
     {ul
     {- produced with the {!View} and {!Schema} functors, which have pre-canned
        module types, but fixed names; or}
-    {- constructed manually, perhaps by using the functions {{!data0}[data[n]]},
+    {- constructed manually, perhaps by using the functions {{!app0}[app[n]]},
        with their signature spelled out by hand.}}
 *)
 module Generic (Q: sig type 'a q end) : sig
@@ -265,14 +267,14 @@ module Generic (Q: sig type 'a q end) : sig
       [q] and [r]. *)
 
   (** [View] equips a generic consumer [gfun] with the
-      {{!Tpf.data0}[data[n]]} interface, for easy export. *)
+      {{!Tpf.data}[data[n]]} interface, for easy export. *)
   module View (F: sig
     type 'a r
     val gfun: ('a, p) view -> 'a r
   end) : Data with type 'a q := 'a Q.q and type 'a r := 'a F.r
 
   (** [Schema] equips a generic producer [gfun] the the
-      {{!Tpf.data0}[data[n]]} interface, for easy export. *)
+      {{!Tpf.data}[data[n]]} interface, for easy export. *)
   module Schema (F: sig
     type 'a r
     val gfun: ('a, p) schema -> 'a r

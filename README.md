@@ -51,7 +51,7 @@ the interfaces. It can be consulted [online][doc].
 Tpf contains several optional libraries and sub-libraries:
 
 - opam package `tpf` contains the [core library][doc-tpf].
-- opam package `tpf-ext` adds support for various [third-party libs][doc-tpf-ext]:
+- opam package `tpf-ext` adds support for various [third-party libs][doc-tpf-ext].
 - opam package `tpf-deriving` contains the generic deriver.
   It is worth pointing out that Tpf can be used without PPX.
 
@@ -77,7 +77,7 @@ Of course it does. `List.length` compiles to a 4-instruction loop. The Tpf
 version reconstructs the entire list (albeit lazily), and explores every field
 of every block in it.
 
-### ... and Tpf is lightning fast
+### ... and Tpf is lightning fast!
 
 If you use the industry-leading PPX-based Sexplib deriver,
 [ppx_sexp_conv][ppx-sexp-conv], and compare the performance of derived
